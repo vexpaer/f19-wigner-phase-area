@@ -110,8 +110,7 @@ theorem fejer_square_le (N n : ℕ) (c : ℂ) :
     abs_of_nonneg (fejerWeight_nonneg N n)]
   have h : fejerWeight N n * ‖c‖ ≤ ‖c‖ := by
     simpa using mul_le_mul_of_nonneg_right (fejerWeight_le_one N n) (norm_nonneg c)
-  gcongr
-  positivity
+  exact pow_le_pow_left₀ (mul_nonneg (fejerWeight_nonneg N n) (norm_nonneg c)) h 2
 
 /-- The elementary nonnegative kernel underlying Fejér averaging. -/
 noncomputable def fejerKernel (N : ℕ) (z : ℂ) : ℝ :=
@@ -144,11 +143,10 @@ theorem fejer_error_square_le (N n : ℕ) (c : ℂ) :
   have h : -(fejerWeight N n-1)*‖c‖ ≤ ‖c‖ := by
     have h' : -(fejerWeight N n-1) ≤ 1 := by linarith
     simpa using mul_le_mul_of_nonneg_right h' (norm_nonneg c)
-  gcongr
-  positivity
+  exact pow_le_pow_left₀ (mul_nonneg (by linarith) (norm_nonneg c)) h 2
 
 theorem fejer_error_tendsto (n : ℕ) (c : ℂ) :
-    Tendsto (fun N : ℕ => ENNReal.ofReal ‖(fejerWeight N n : ℂ)*c-c‖^2)
+    Tendsto (fun N : ℕ => ENNReal.ofReal (‖(fejerWeight N n : ℂ)*c-c‖^2))
       atTop (𝓝 0) := by
   have h := (Complex.continuous_ofReal.tendsto 1).comp (fejerWeight_tendsto n)
   have hc : Tendsto (fun N : ℕ => (fejerWeight N n : ℂ)*c-c) atTop (𝓝 0) := by
@@ -158,10 +156,10 @@ theorem fejer_error_tendsto (n : ℕ) (c : ℂ) :
 -- Convergence in the squared ℓ² coefficient error, for every square-summable
 -- coefficient sequence. No finite-support assumption is made on c.
 theorem fejer_l2_error_tendsto (c : ℕ → ℂ) (hc : Summable (fun n => ‖c n‖^2)) :
-    Tendsto (fun N : ℕ => ∑' n, ENNReal.ofReal ‖(fejerWeight N n : ℂ)*c n-c n‖^2)
+    Tendsto (fun N : ℕ => ∑' n, ENNReal.ofReal (‖(fejerWeight N n : ℂ)*c n-c n‖^2))
       atTop (𝓝 0) := by
-  let f : ℕ → ℕ → ℝ≥0∞ := fun N n => ENNReal.ofReal ‖(fejerWeight N n : ℂ)*c n-c n‖^2
-  let g : ℕ → ℝ≥0∞ := fun n => ENNReal.ofReal ‖c n‖^2
+  let f : ℕ → ℕ → ℝ≥0∞ := fun N n => ENNReal.ofReal (‖(fejerWeight N n : ℂ)*c n-c n‖^2)
+  let g : ℕ → ℝ≥0∞ := fun n => ENNReal.ofReal (‖c n‖^2)
   have hfin : (∫⁻ n, g n ∂Measure.count) ≠ ⊤ := by
     rw [lintegral_count]
     dsimp [g]
@@ -235,36 +233,35 @@ namespace F19.Pure
 
 /-- Polynomial part of a cross-Fock Wigner function, in the conjugate
 quadrature convention z = x - i p. The Gaussian and π are factored out. -/
+noncomputable def crossFockCoeff (m n k : ℕ) : ℝ :=
+  (-1 : ℝ)^k * (m.choose k : ℝ) * (n.choose k : ℝ) *
+      (k.factorial : ℝ) /
+      (Real.sqrt (m.factorial : ℝ) * Real.sqrt (n.factorial : ℝ))
+
+theorem crossFockCoeff_symm (m n k : ℕ) : crossFockCoeff m n k = crossFockCoeff n m k := by
+  unfold crossFockCoeff
+  rw [show ((-1 : ℝ)^k * (m.choose k : ℝ) * (n.choose k : ℝ) *
+      (k.factorial : ℝ)) = ((-1 : ℝ)^k * (n.choose k : ℝ) * (m.choose k : ℝ) *
+      (k.factorial : ℝ)) by ring, mul_comm (Real.sqrt (m.factorial : ℝ))]
+
 noncomputable def crossFockKernel (m n : ℕ) (z : ℂ) : ℂ :=
   ∑ k ∈ Finset.range (min m n+1),
-    (((-1 : ℝ)^k * (m.choose k : ℝ) * (n.choose k : ℝ) *
-      (k.factorial : ℝ) /
-      (Real.sqrt (m.factorial : ℝ) * Real.sqrt (n.factorial : ℝ))) : ℂ) *
-    z^(m-k) * (star z)^(n-k)
+    (crossFockCoeff m n k : ℂ) * z^(m-k) * (star z)^(n-k)
 
 theorem crossFockKernel_vacuum (m : ℕ) (z : ℂ) :
     crossFockKernel m 0 z = z^m / (Real.sqrt (m.factorial : ℝ) : ℂ) := by
-  unfold crossFockKernel
+  unfold crossFockKernel crossFockCoeff
   simp [Finset.sum_range_succ, div_eq_mul_inv, mul_comm]
 
 theorem crossFockKernel_conj (m n : ℕ) (z : ℂ) :
     star (crossFockKernel m n z) = crossFockKernel n m z := by
   unfold crossFockKernel
   rw [min_comm m n]
-  simp only [star_sum, star_mul', star_pow, star_star, Complex.star_def, Complex.conj_ofReal]
-  simp only [← Complex.star_def, star_star]
+  have hc (k : ℕ) : star (crossFockCoeff m n k : ℂ) = (crossFockCoeff n m k : ℂ) := by
+    rw [Complex.star_def, Complex.conj_ofReal, crossFockCoeff_symm]
+  simp only [star_sum, star_mul', star_pow, star_star, hc]
   apply Finset.sum_congr rfl
   intro k hk
-  have he : ((-1 : ℝ)^k * (m.choose k : ℝ) * (n.choose k : ℝ) *
-      (k.factorial : ℝ) /
-      (Real.sqrt (m.factorial : ℝ) * Real.sqrt (n.factorial : ℝ))) =
-      ((-1 : ℝ)^k * (n.choose k : ℝ) * (m.choose k : ℝ) *
-      (k.factorial : ℝ) /
-      (Real.sqrt (n.factorial : ℝ) * Real.sqrt (m.factorial : ℝ))) := by
-    rw [show ((-1 : ℝ)^k * (m.choose k : ℝ) * (n.choose k : ℝ) *
-      (k.factorial : ℝ)) = ((-1 : ℝ)^k * (n.choose k : ℝ) * (m.choose k : ℝ) *
-      (k.factorial : ℝ)) by ring, mul_comm (Real.sqrt (m.factorial : ℝ))]
-  rw [he]
   ring
 
 noncomputable def finiteWignerPolynomial (N : ℕ) (c : ℕ → ℂ) (z : ℂ) : ℂ :=
