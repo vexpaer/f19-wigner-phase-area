@@ -1070,7 +1070,7 @@ theorem oddsWeight_bound (r : ℝ) (hr : 0 ≤ r) (d n k : ℕ) :
     have hcoef : ((n-k:ℕ):ℝ)*(r/((n:ℝ)+d)) ≤ r := by
       rcases eq_or_lt_of_le hd with hzero | hpos
       · rw [← hzero, div_zero, mul_zero]; exact hr
-      · rw [mul_div_assoc]
+      · rw [← mul_div_assoc]
         apply (div_le_iff₀ hpos).2
         exact mul_le_mul_of_nonneg_right hn hr
     have he := oddsWeight_step r d n k
@@ -1193,7 +1193,10 @@ theorem bernMean_odds (r : ℝ) (hr : 0 ≤ r) (d n : ℕ)
     (hd : 0 < (n:ℝ)+d) (f : ℕ → ℝ) :
     bernMean (oddsProb r d n) n f =
       (∑' k, oddsWeight r d n k*f k)/(∑' k, oddsWeight r d n k) := by
-  rw [odds_tsum_eq_sum, odds_tsum_eq_sum]
+  rw [odds_tsum_eq_sum]
+  have he : (∑' k, oddsWeight r d n k) = ∑ k ∈ Finset.range (n+1), oddsWeight r d n k := by
+    simpa only [mul_one] using odds_tsum_eq_sum r d n (fun _ => 1)
+  rw [he]
   have h (g : ℕ → ℝ) : bernMean (oddsProb r d n) n g =
       (1-oddsProb r d n)^n * ∑ k ∈ Finset.range (n+1), oddsWeight r d n k*g k := by
     rw [bernMean_binomial, Finset.mul_sum]
@@ -1244,7 +1247,6 @@ theorem bernMean_poisson_tendsto (r : ℝ≥0) (d : ℕ) (f : ℕ → ℝ)
   have hn' : (0:ℝ) < n := by exact_mod_cast (show 0 < n by omega)
   have hd : 0 < (n:ℝ)+d := add_pos_of_pos_of_nonneg hn' (Nat.cast_nonneg d)
   rw [bernMean_odds (r:ℝ) r.property d n hd]
-  simp only [mul_one]
 
 #print axioms binWeight_eq_odds
 #print axioms bernMean_odds
@@ -1303,7 +1305,7 @@ theorem poisson_poincare (r : ℝ≥0) (f : ℕ → ℝ)
       Tendsto (fun n => bernMean (p n) (n+1) g) atTop
         (𝓝 (∑' k, ProbabilityTheory.poissonPMFReal r k*g k)) := by
     have h := (bernMean_poisson_tendsto r 0 g hg).comp (tendsto_add_atTop_nat 1)
-    simpa [p, oddsProb, Nat.cast_add] using h
+    simpa [p, oddsProb, Function.comp_def, Nat.cast_add] using h
   exact poincare_limit (r:ℝ) p f _ _ _
     (fun n => oddsProb_nonneg _ r.property 1 n)
     (fun n => oddsProb_le_one _ r.property 1 n (by positivity))
