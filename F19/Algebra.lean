@@ -1570,3 +1570,68 @@ theorem planar_diagonal_inequality (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n) :
 #print axioms planar_diagonal_inequality
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+-- The finite-RHS theorem is not a consequence of Lean's totalized tsum:
+-- the signed Wigner series converges absolutely almost everywhere.
+theorem diagonal_series_abs_summable_ae (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n)
+    (hfinite : (∫⁻ t in Ioi (0 : ℝ), diagonalHusimiRoot p t) ≠ ⊤) :
+    ∀ᵐ t ∂(volume.restrict (Ioi (0 : ℝ))),
+      Summable (fun n => |p n * radialWigner n t|) := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  let q : ℕ → ℝ≥0∞ := fun n => ENNReal.ofReal (p n)
+  let f : ℕ → ℝ → ℝ≥0∞ := fun n t => ENNReal.ofReal (radialHusimiRoot n t)
+  let w : ℕ → ℝ → ℝ≥0∞ := fun n t => ENNReal.ofReal |radialWigner n t|
+  have hf : ∀ n, Measurable (f n) := by
+    intro n
+    dsimp [f, radialHusimiRoot]
+    fun_prop
+  have hw : ∀ n, Measurable (w n) := by
+    intro n
+    dsimp [w, radialWigner, radialFock, laguerre]
+    fun_prop
+  let S : ℝ → ℝ≥0∞ := fun t => ∑' n, q n * w n t
+  have hS : Measurable S := Measurable.ennreal_tsum (fun n => (hw n).const_mul (q n))
+  have hsum : (∫⁻ t, S t ∂μ) = ∑' n, q n * (∫⁻ t, w n t ∂μ) := by
+    dsimp [S]
+    rw [lintegral_tsum (fun n => (measurable_const.mul (hw n)).aemeasurable)]
+    apply tsum_congr
+    intro n
+    exact lintegral_const_mul _ (hw n)
+  have hbound : 8 * (∫⁻ t, S t ∂μ) ≤
+      (∫⁻ t, mixtureRoot q f t ∂μ)^2 := by
+    calc
+      _ = ∑' n, q n * (8 * (∫⁻ t, w n t ∂μ)) := by
+        rw [hsum, ← ENNReal.tsum_mul_left]
+        apply tsum_congr
+        intro n
+        ac_rfl
+      _ ≤ ∑' n, q n * (∫⁻ t, f n t ∂μ)^2 :=
+        ENNReal.tsum_le_tsum (fun n => mul_le_mul_left' (radialFock_enn_component n) _)
+      _ ≤ _ := countable_mixture_root_bound μ q f hf
+  have hfin : (∫⁻ t, S t ∂μ) ≠ ⊤ := by
+    intro htop
+    rw [htop, ENNReal.mul_top (by norm_num : (8 : ℝ≥0∞) ≠ 0)] at hbound
+    have he : (∫⁻ t, mixtureRoot q f t ∂μ)^2 = ⊤ := top_le_iff.mp hbound
+    exact ENNReal.pow_ne_top hfinite he
+  filter_upwards [ae_lt_top hS hfin] with t ht
+  have h : (∑' n, ENNReal.ofReal |p n * radialWigner n t|) ≠ ⊤ := by
+    have he : (∑' n, ENNReal.ofReal |p n * radialWigner n t|) = S t := by
+      dsimp [S,q,w]
+      apply tsum_congr
+      intro n
+      rw [abs_mul, abs_of_nonneg (hp n), ENNReal.ofReal_mul (hp n)]
+    rw [he]
+    exact ne_of_lt ht
+  change (∑' n, (↑(Real.toNNReal |p n * radialWigner n t|) : ℝ≥0∞)) ≠ ⊤ at h
+  have h' := ENNReal.tsum_coe_ne_top_iff_summable_coe.mp h
+  simpa only [Real.coe_toNNReal _ (abs_nonneg _)] using h'
+
+#print axioms diagonal_series_abs_summable_ae
+
+end F19
