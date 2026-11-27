@@ -1362,8 +1362,7 @@ theorem planarHusimiRoot_integral (n : ℕ) :
   have h := Real.sq_sqrt Real.pi_nonneg
   have hs := Real.sqrt_pos.2 Real.pi_pos
   field_simp [hs.ne']
-  rw [← h]
-  ring
+  linear_combination (∫ t in Ioi (0 : ℝ), radialHusimiRoot n t) * (-h)
 
 theorem planarFock_inequality (n : ℕ) :
     8 * Real.pi * (∫ z : ℂ, |planarWigner n z|) ≤
@@ -1401,7 +1400,7 @@ theorem square_image_Ioi :
   ext x
   constructor
   · rintro ⟨y, hy, rfl⟩
-    exact pow_pos hy 2
+    exact (pow_pos (show (0 : ℝ) < y from hy) 2 : 0 < y^2)
   · intro hx
     exact ⟨Real.sqrt x, Real.sqrt_pos.2 hx, Real.sq_sqrt hx.le⟩
 
@@ -1422,6 +1421,7 @@ theorem radial_lintegral_square (g : ℝ → ℝ≥0∞) (hg : Measurable g) :
     (fun x hx y hy he => by
       have hx' : 0 < x := hx
       have hy' : 0 < y := hy
+      change x^2 = y^2 at he
       have hz : (x-y)*(x+y) = 0 := by nlinarith only [he]
       rcases mul_eq_zero.mp hz with hxy | hxy
       · linarith
@@ -1430,10 +1430,14 @@ theorem radial_lintegral_square (g : ℝ → ℝ≥0∞) (hg : Measurable g) :
   rw [square_image_Ioi] at h
   rw [h, ← lintegral_const_mul 2 (by fun_prop)]
   apply setLIntegral_congr_fun measurableSet_Ioi
-  intro r hr
+  filter_upwards [] with r hr
   have hr' : 0 < r := hr
-  simp [ContinuousLinearMap.det_one_smulRight, abs_of_pos (mul_pos (by norm_num : (0:ℝ)<2) hr'),
-    ENNReal.ofReal_mul (by norm_num : (0:ℝ) ≤ 2), mul_assoc]
+  have hd : ((2*r) • ContinuousLinearMap.id ℝ ℝ).det = 2*r := by
+    simpa using ContinuousLinearMap.det_one_smulRight (2*r)
+  rw [hd, abs_of_pos (mul_pos (by norm_num : (0:ℝ)<2) hr'),
+    ENNReal.ofReal_mul (by norm_num : (0:ℝ) ≤ 2)]
+  norm_num
+  <;> ac_rfl
 
 theorem planar_radial_lintegral (g : ℝ → ℝ≥0∞) (hg : Measurable g) :
     (∫⁻ z : ℂ, g (‖z‖^2)) =
@@ -1456,8 +1460,7 @@ theorem planar_radial_lintegral (g : ℝ → ℝ≥0∞) (hg : Measurable g) :
       ac_rfl
     _ = _ := by
       rw [radial_lintegral_square g hg, ENNReal.ofReal_mul (by norm_num : (0:ℝ) ≤ 2)]
-      norm_num
-      ac_rfl
+      norm_num [mul_comm, mul_left_comm, mul_assoc]
 
 #print axioms radial_lintegral_square
 #print axioms planar_radial_lintegral
@@ -1477,11 +1480,33 @@ noncomputable def planarDiagonalHusimiRoot (p : ℕ → ℝ) (z : ℂ) : ℝ≥0
   (ENNReal.ofReal (Real.sqrt Real.pi))⁻¹ * diagonalHusimiRoot p (‖z‖^2)
 
 theorem diagonalWigner_measurable (p : ℕ → ℝ) : Measurable (diagonalWigner p) := by
-  unfold diagonalWigner
-  apply Measurable.tsum
-  intro n
-  unfold radialWigner radialFock laguerre
-  fun_prop
+  classical
+  let a : ℕ → ℝ → ℝ := fun n t => p n * radialWigner n t
+  have ha (n : ℕ) : Measurable (a n) := by
+    dsimp [a, radialWigner, radialFock, laguerre]
+    fun_prop
+  let A : ℝ → ℝ≥0∞ := fun t => ∑' n, ENNReal.ofReal |a n t|
+  have hA : Measurable A := Measurable.ennreal_tsum (fun n => (ha n).abs.ennreal_ofReal)
+  let s : Set ℝ := {t | A t ≠ ⊤}
+  have hs : MeasurableSet s := (hA (measurableSet_singleton (⊤ : ℝ≥0∞))).compl
+  have hsum (t : ℝ) : t ∈ s ↔ Summable (fun n => a n t) := by
+    change A t ≠ ⊤ ↔ _
+    change (∑' n, (↑(Real.toNNReal |a n t|) : ℝ≥0∞)) ≠ ⊤ ↔ _
+    rw [ENNReal.tsum_coe_ne_top_iff_summable_coe]
+    simpa only [Real.coe_toNNReal _ (abs_nonneg _)] using
+      (summable_abs_iff : Summable (fun n => |a n t|) ↔ Summable (fun n => a n t))
+  let u : ℕ → ℝ → ℝ := fun N => s.indicator (fun t => ∑ n ∈ Finset.range N, a n t)
+  have hu (N : ℕ) : Measurable (u N) :=
+    (Finset.measurable_sum _ (fun n _ => ha n)).indicator hs
+  apply measurable_of_tendsto_metrizable hu
+  rw [tendsto_pi_nhds]
+  intro t
+  by_cases ht : t ∈ s
+  · simpa [u, ht, diagonalWigner, a] using ((hsum t).mp ht).hasSum.tendsto_sum_nat
+  · have hz : ¬ Summable (fun n => a n t) := fun h => ht ((hsum t).mpr h)
+    have he : diagonalWigner p t = 0 := by
+      exact tsum_eq_zero_of_not_summable hz
+    simp [u, ht, he, tendsto_const_nhds]
 
 theorem diagonalHusimiRoot_measurable (p : ℕ → ℝ) : Measurable (diagonalHusimiRoot p) := by
   unfold diagonalHusimiRoot mixtureRoot
@@ -1507,7 +1532,9 @@ theorem planarDiagonalWigner_lintegral (p : ℕ → ℝ) :
     unfold planarDiagonalWigner
     rw [abs_div, abs_of_pos Real.pi_pos, div_eq_mul_inv,
       ENNReal.ofReal_mul (abs_nonneg _), ENNReal.ofReal_inv_of_pos Real.pi_pos, mul_comm]
-  rw [he, lintegral_const_mul _ (hmeas.comp (by fun_prop)),
+  have hm : Measurable (fun z : ℂ => ENNReal.ofReal |diagonalWigner p (‖z‖^2)|) :=
+    hmeas.comp (by fun_prop)
+  rw [he, lintegral_const_mul _ hm,
     planar_radial_lintegral _ hmeas, ← mul_assoc, ENNReal.inv_mul_cancel hpi hpit, one_mul]
 
 theorem planarDiagonalHusimiRoot_lintegral (p : ℕ → ℝ) :
@@ -1520,7 +1547,9 @@ theorem planarDiagonalHusimiRoot_lintegral (p : ℕ → ℝ) :
   have he : ENNReal.ofReal Real.pi = ENNReal.ofReal (Real.sqrt Real.pi)^2 := by
     rw [← ENNReal.ofReal_pow hs.le, Real.sq_sqrt Real.pi_nonneg]
   unfold planarDiagonalHusimiRoot
-  rw [lintegral_const_mul _ ((diagonalHusimiRoot_measurable p).comp (by fun_prop)),
+  have hm : Measurable (fun z : ℂ => diagonalHusimiRoot p (‖z‖^2)) :=
+    (diagonalHusimiRoot_measurable p).comp (by fun_prop)
+  rw [lintegral_const_mul _ hm,
     planar_radial_lintegral _ (diagonalHusimiRoot_measurable p), he, pow_two]
   rw [← mul_assoc, ← mul_assoc, ENNReal.inv_mul_cancel h0 ht, one_mul]
 
