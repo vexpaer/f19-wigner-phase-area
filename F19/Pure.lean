@@ -649,9 +649,9 @@ theorem chiGammaNormalized_tendsto (a : ℝ) (ha : a < 1) :
       Tendsto _ atTop (𝓝 ((1:ℝ)-a*0)))
   have hl : Tendsto (fun k => (1:ℝ)/((1+(1/2:ℝ)*(t k)⁻¹)*(1-a*(t k)⁻¹)))
       atTop (𝓝 1) := by
-    simpa only [one_mul, div_one, Pi.div_apply] using (tendsto_const_nhds (x := (1:ℝ)) (f := (atTop : Filter ℕ))).div (h1.mul h2) (by norm_num : (1:ℝ)*1 ≠ 0)
+    simpa only [one_mul, div_one, Pi.div_apply] using (tendsto_const_nhds : Tendsto (fun _ : ℕ => (1:ℝ)) atTop (𝓝 1)).div (h1.mul h2) (by norm_num : (1:ℝ)*1 ≠ 0)
   have hu : Tendsto (fun k => (1:ℝ)/(1-a*(t k)⁻¹)) atTop (𝓝 1) := by
-    simpa only [div_one, Pi.div_apply] using (tendsto_const_nhds (x := (1:ℝ)) (f := (atTop : Filter ℕ))).div h2 one_ne_zero
+    simpa only [div_one, Pi.div_apply] using (tendsto_const_nhds : Tendsto (fun _ : ℕ => (1:ℝ)) atTop (𝓝 1)).div h2 one_ne_zero
   apply tendsto_of_tendsto_of_tendsto_of_le_of_le hl hu
   · intro k
     have ht0 : 0 < t k := by dsimp [t]; positivity
@@ -753,7 +753,7 @@ namespace F19.Pure
 
 /-- Binomial expectation, constructed by repeated Bernoulli convolution.
 This definition is finite and requires no probability-space axioms. -/
-def bernMean (p : ℝ) : ℕ → (ℕ → ℝ) → ℝ
+noncomputable def bernMean (p : ℝ) : ℕ → (ℕ → ℝ) → ℝ
   | 0, f => f 0
   | n+1, f => (1-p)*bernMean p n f + p*bernMean p n (fun k => f (k+1))
 
@@ -797,10 +797,10 @@ theorem bernMean_jensen_square (p : ℝ) (hp : 0 ≤ p) (hp' : p ≤ 1)
       mul_nonneg (mul_nonneg hp (sub_nonneg.mpr hp')) (sq_nonneg _)
     nlinarith only [h, hpos]
 
-def bernVar (p : ℝ) (n : ℕ) (f : ℕ → ℝ) : ℝ :=
+noncomputable def bernVar (p : ℝ) (n : ℕ) (f : ℕ → ℝ) : ℝ :=
   bernMean p n (fun k => (f k)^2) - (bernMean p n f)^2
 
-def deltaSq (f : ℕ → ℝ) (k : ℕ) : ℝ := (f (k+1)-f k)^2
+noncomputable def deltaSq (f : ℕ → ℝ) (k : ℕ) : ℝ := (f (k+1)-f k)^2
 
 theorem bernVar_succ (p : ℝ) (n : ℕ) (f : ℕ → ℝ) :
     bernVar p (n+1) f =
@@ -842,5 +842,62 @@ theorem bernVar_poincare (p : ℝ) (hp : 0 ≤ p) (hp' : p ≤ 1)
 #print axioms bernMean_jensen_square
 #print axioms bernVar_succ
 #print axioms bernVar_poincare
+
+end F19.Pure
+
+
+namespace F19.Pure
+
+theorem qubit_negative_polynomial_integral (k : ℕ) :
+    (∫ u in (0:ℝ)..(1/2:ℝ), (1-2*u)*u^k) =
+      (1/2:ℝ)^(k+1)/(((k:ℝ)+1)*((k:ℝ)+2)) := by
+  have he (u : ℝ) : (1-2*u)*u^k = u^k-2*u^(k+1) := by
+    rw [pow_succ]
+    ring
+  simp_rw [he]
+  have h1 : IntervalIntegrable (fun u : ℝ => u^k) volume 0 (1/2) :=
+    (continuous_id.pow k).intervalIntegrable _ _
+  have h2 : IntervalIntegrable (fun u : ℝ => 2*u^(k+1)) volume 0 (1/2) :=
+    (continuous_const.mul (continuous_id.pow (k+1))).intervalIntegrable _ _
+  rw [intervalIntegral.integral_sub h1 h2, intervalIntegral.integral_const_mul,
+    integral_pow, integral_pow]
+  simp only [zero_pow (Nat.succ_ne_zero _), sub_zero]
+  push_cast
+  rw [show k+1+1 = (k+1)+1 by rfl, pow_succ (1/2:ℝ) (k+1)]
+  have hk : (0:ℝ) ≤ k := Nat.cast_nonneg k
+  field_simp <;> ring
+
+theorem qubit_negative_gamma_bound (k : ℕ) :
+    (2:ℝ)/(k.factorial:ℝ) *
+      (∫ u in (0:ℝ)..(1/2:ℝ), (1-2*u)*Real.exp (-u)*u^k) ≤
+      1/((2:ℝ)^k*((k:ℝ)+1)*((k:ℝ)+2)*(k.factorial:ℝ)) := by
+  have h1 : IntervalIntegrable (fun u : ℝ => (1-2*u)*Real.exp (-u)*u^k) volume 0 (1/2) :=
+    (by fun_prop : Continuous (fun u : ℝ => (1-2*u)*Real.exp (-u)*u^k)).intervalIntegrable _ _
+  have h2 : IntervalIntegrable (fun u : ℝ => (1-2*u)*u^k) volume 0 (1/2) :=
+    (by fun_prop : Continuous (fun u : ℝ => (1-2*u)*u^k)).intervalIntegrable _ _
+  have hle : (∫ u in (0:ℝ)..(1/2:ℝ), (1-2*u)*Real.exp (-u)*u^k) ≤
+      ∫ u in (0:ℝ)..(1/2:ℝ), (1-2*u)*u^k := by
+    apply intervalIntegral.integral_mono_on (by norm_num) h1 h2
+    intro u hu
+    have h0 : 0 ≤ u := hu.1
+    have htop : u ≤ 1/2 := hu.2
+    have hpos : 0 ≤ 1-2*u := by linarith
+    have hexp : Real.exp (-u) ≤ 1 := by
+      rw [← Real.exp_zero]
+      exact Real.exp_le_exp.mpr (by linarith)
+    have h := mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hexp hpos) (pow_nonneg h0 k)
+    simpa using h
+  calc
+    _ ≤ (2:ℝ)/(k.factorial:ℝ) *
+        (∫ u in (0:ℝ)..(1/2:ℝ), (1-2*u)*u^k) :=
+      mul_le_mul_of_nonneg_left hle (by positivity)
+    _ = _ := by
+      rw [qubit_negative_polynomial_integral, pow_succ, div_pow]
+      have hk : (0:ℝ) ≤ k := Nat.cast_nonneg k
+      have hf : (0:ℝ) < k.factorial := by positivity
+      field_simp <;> ring
+
+#print axioms qubit_negative_polynomial_integral
+#print axioms qubit_negative_gamma_bound
 
 end F19.Pure
