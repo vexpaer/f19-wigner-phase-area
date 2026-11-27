@@ -1140,3 +1140,114 @@ theorem odds_tsum_tendsto (r : ℝ) (hr : 0 ≤ r) (d : ℕ) (f : ℕ → ℝ)
 #print axioms odds_tsum_tendsto
 
 end F19.Pure
+
+
+namespace F19.Pure
+open scoped NNReal
+
+theorem bernMean_one (p : ℝ) (n : ℕ) :
+    bernMean p n (fun _ => 1) = 1 := by
+  induction n with
+  | zero => rfl
+  | succ n ih => simp only [bernMean, ih]; ring
+
+noncomputable def oddsProb (r : ℝ) (d n : ℕ) : ℝ :=
+  r/((n:ℝ)+d+r)
+
+theorem binWeight_eq_odds (r : ℝ) (hr : 0 ≤ r) (d n k : ℕ)
+    (hd : 0 < (n:ℝ)+d) :
+    binWeight (oddsProb r d n) n k =
+      (1-oddsProb r d n)^n * oddsWeight r d n k := by
+  by_cases hk : k ≤ n
+  · let t : ℝ := (n:ℝ)+d
+    have ht : 0 < t := hd
+    have htr : 0 < t+r := add_pos_of_pos_of_nonneg ht hr
+    have he : oddsProb r d n = (1-oddsProb r d n)*(r/t) := by
+      unfold oddsProb
+      change r/(t+r) = (1-r/(t+r))*(r/t)
+      field_simp [ht.ne', htr.ne'] <;> ring
+    unfold binWeight oddsWeight
+    change (n.choose k:ℝ)*(oddsProb r d n)^k*(1-oddsProb r d n)^(n-k) =
+      (1-oddsProb r d n)^n*((n.choose k:ℝ)*(r/t)^k)
+    have hp : (oddsProb r d n)^k = (1-oddsProb r d n)^k*(r/t)^k := by
+      rw [← mul_pow, ← he]
+    have hn : (1-oddsProb r d n)^n =
+        (1-oddsProb r d n)^k*(1-oddsProb r d n)^(n-k) := by
+      rw [← pow_add, Nat.add_sub_of_le hk]
+    rw [hp, hn]
+    ring
+  · have hlt : n < k := by omega
+    rw [binWeight_outside _ n k hlt, oddsWeight_outside _ d n k hlt, mul_zero]
+
+theorem odds_tsum_eq_sum (r : ℝ) (d n : ℕ) (f : ℕ → ℝ) :
+    (∑' k, oddsWeight r d n k * f k) =
+      ∑ k ∈ Finset.range (n+1), oddsWeight r d n k * f k := by
+  apply tsum_eq_sum
+  intro k hk
+  have h : n < k := by
+    simp only [Finset.mem_range, not_lt] at hk
+    omega
+  rw [oddsWeight_outside _ _ _ _ h, zero_mul]
+
+theorem bernMean_odds (r : ℝ) (hr : 0 ≤ r) (d n : ℕ)
+    (hd : 0 < (n:ℝ)+d) (f : ℕ → ℝ) :
+    bernMean (oddsProb r d n) n f =
+      (∑' k, oddsWeight r d n k*f k)/(∑' k, oddsWeight r d n k) := by
+  rw [odds_tsum_eq_sum, odds_tsum_eq_sum]
+  have h (g : ℕ → ℝ) : bernMean (oddsProb r d n) n g =
+      (1-oddsProb r d n)^n * ∑ k ∈ Finset.range (n+1), oddsWeight r d n k*g k := by
+    rw [bernMean_binomial, Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro k hk
+    rw [binWeight_eq_odds r hr d n k hd]
+    ring
+  have hmass := h (fun _ => 1)
+  rw [bernMean_one] at hmass
+  simp only [mul_one] at hmass
+  have hden : (∑ k ∈ Finset.range (n+1), oddsWeight r d n k) ≠ 0 := by
+    intro hz
+    rw [hz, mul_zero] at hmass
+    norm_num at hmass
+  have hmass' : (1-oddsProb r d n)^n *
+      (∑ k ∈ Finset.range (n+1), oddsWeight r d n k) = 1 := hmass.symm
+  simp only [mul_one]
+  rw [h f]
+  apply (eq_div_iff hden).2
+  rw [mul_assoc, mul_comm (∑ k ∈ Finset.range (n+1), oddsWeight r d n k*f k),
+    ← mul_assoc, hmass', one_mul]
+
+/-- Law of small numbers for test functions dominated by a summable
+factorial envelope, in expectation rather than merely in distribution. -/
+theorem bernMean_poisson_tendsto (r : ℝ≥0) (d : ℕ) (f : ℕ → ℝ)
+    (hs : Summable (fun k => ((r:ℝ)^k/(k.factorial:ℝ))*‖f k‖)) :
+    Tendsto (fun n : ℕ => bernMean (oddsProb r d n) n f) atTop
+      (𝓝 (∑' k, ProbabilityTheory.poissonPMFReal r k*f k)) := by
+  have hmass : HasSum (fun k : ℕ => (r:ℝ)^k/(k.factorial:ℝ)) (Real.exp r) := by
+    rw [Real.exp_eq_exp_ℝ]
+    exact NormedSpace.expSeries_div_hasSum_exp ℝ (r:ℝ)
+  have hnum := odds_tsum_tendsto (r:ℝ) r.property d f hs
+  have hden := odds_tsum_tendsto (r:ℝ) r.property d (fun _ => 1)
+    (by simpa using hmass.summable)
+  simp only [mul_one, hmass.tsum_eq] at hden
+  have hl := hnum.div hden (Real.exp_ne_zero _)
+  have he : (∑' k, ProbabilityTheory.poissonPMFReal r k*f k) =
+      (∑' k, ((r:ℝ)^k/(k.factorial:ℝ))*f k)/Real.exp r := by
+    unfold ProbabilityTheory.poissonPMFReal
+    have h (k : ℕ) : Real.exp (-(r:ℝ))*(r:ℝ)^k/(k.factorial:ℝ)*f k =
+        (Real.exp (r:ℝ))⁻¹ * (((r:ℝ)^k/(k.factorial:ℝ))*f k) := by
+      rw [Real.exp_neg]; ring
+    simp_rw [h, tsum_mul_left]
+    ring
+  rw [he]
+  apply hl.congr'
+  filter_upwards [eventually_ge_atTop (1:ℕ)] with n hn
+  have hn' : (0:ℝ) < n := by exact_mod_cast (show 0 < n by omega)
+  have hd : 0 < (n:ℝ)+d := add_pos_of_pos_of_nonneg hn' (Nat.cast_nonneg d)
+  rw [bernMean_odds (r:ℝ) r.property d n hd]
+  simp only [mul_one]
+
+#print axioms binWeight_eq_odds
+#print axioms bernMean_odds
+#print axioms bernMean_poisson_tendsto
+
+end F19.Pure
