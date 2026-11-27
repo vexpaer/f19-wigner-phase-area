@@ -100,3 +100,57 @@ Since \(\mathbb ER^2=s^2+2\), this is equivalent to
 Gaussian Poincaré alone gives only \(\operatorname{Var}(R)\le1\). A quantitative deficit is necessary. The second-order spectral gap gives \(\operatorname{Var}(R)\le(1+|\mathbb E\nabla R|^2)/2\), because \(|\nabla R|=1\) almost everywhere. Thus a sufficient (still unproved) scalar inequality is \(4\mathbb E(1-R^2)_+\le1-|\mathbb E\nabla R|^2\). Numerical quadrature at s=0,0.25,...,5 yielded positive gaps, but no universal estimate has been certified.
 
 The first priority is the exact polynomial reformulation and finite approximation; the remaining sharp Gaussian inequality must not be introduced as an axiom or silently assumed.
+
+
+## 6. Analytic degree-one proof via Poisson–Gamma variance decomposition (new)
+
+This is a mathematical proof candidate for every \(P(z)=a+bz\), not yet an end-to-end Lean theorem. Let \(b\ne0\), \(s=|a/b|\), \(\lambda=s^2/2\), \(R=|Z+s|\), with \(Z\) the two-dimensional standard Gaussian from Section 5. Let \(K\sim\operatorname{Pois}(\lambda)\); conditional on \(K=k\), let \(R^2/2\sim\operatorname{Gamma}(k+1,1)\). This mixture follows, for instance, by expanding the noncentral chi-square Laplace transform:
+\[
+E e^{-uR^2/2}=(1+u)^{-1}e^{-\lambda u/(1+u)}
+=e^{-\lambda}\sum_{k\ge0}\frac{\lambda^k}{k!}(1+u)^{-(k+1)}.
+\]
+Uniqueness of Laplace transforms identifies the laws.
+
+Write \(h_k=\sqrt2\,\Gamma(k+3/2)/k!\), \(v_k=2(k+1)-h_k^2\), and \(d_k=E[(1-R^2)_+\mid K=k]\). We prove \(1/3\le v_k\le1/2\) below. The recurrence \(h_{k+1}=h_k(1+1/[2(k+1)])\) gives
+\[
+(h_{k+1}-h_k)^2=\frac{1}{2(k+1)}-\frac{v_k}{4(k+1)^2}.
+\]
+The Poisson Poincare inequality \(\operatorname{Var}(f(K))\le\lambda E[(f(K+1)-f(K))^2]\) applies to \(h\), since its squared growth is at most linear. For completeness it follows by Efron–Stein on \(B_M\sim\operatorname{Bin}(M,\lambda/M)\):
+\(\operatorname{Var}(f(B_M))\le M p(1-p)E[(f(B_{M-1}+1)-f(B_{M-1}))^2]\), then let \(M\to\infty\). For \(f=h\), the differences are bounded and the linear growth of \(h^2\), together with the uniformly bounded binomial second moments, justifies the limit.
+
+The law of total variance therefore implies
+\[
+\begin{aligned}
+\operatorname{Var}(R)
+&=E v_K+\operatorname{Var}(h_K)\\
+&\le\tfrac12+\lambda E[1/(2(K+1))-v_K/(4(K+1)^2)]\\
+&=1-\tfrac12\Pr(K=0)-E[\mathbf1_{K\ge1}v_{K-1}/(4K)].
+\end{aligned}
+\]
+The last step uses the exact Poisson shift \( \lambda E g(K)=E[K g(K-1)\mathbf1_{K\ge1}]\), valid also at \(\lambda=0\). In particular
+\[
+1-\operatorname{Var}(R)\ge E[\tfrac12\mathbf1_{K=0}+\tfrac1{12K}\mathbf1_{K\ge1}].
+\]
+
+On the other hand,
+\[
+2d_k=\frac{2}{k!}\int_0^{1/2}(1-2u)e^{-u}u^k\,du
+<\frac{2^{-k}}{(k+1)(k+2)k!}
+\]
+(strict because \(e^{-u}<1\) for \(0<u<1/2\)). The latter bound is \(1/2\) at \(k=0\); for \(k\ge1\) it is at most \(1/(12k)\). Indeed, \(2^k\ge2\), \(k!\ge1\), and \((k+1)(k+2)\ge6k\) since \((k-1)(k-2)\ge0\) for every positive integer \(k\). Hence \(2E d_K<1-\operatorname{Var}(R)\). Since \(ER^2=s^2+2\), this is exactly
+\[
+E|R^2-1|<(ER)^2.
+\]
+The constant polynomial case \(b=0\) has equality. Thus all vacuum–one-photon superpositions satisfy the sharp conjecture, strictly unless vacuum.
+
+### Gamma ratio bounds (no Stirling required)
+
+For integer \(t=k+1\ge1\), set \(G(t)=\Gamma(t+1/2)/\Gamma(t)\). Gamma log-convexity and recurrence give
+\(t^2/(t+1/2)\le G(t)^2\le t\).
+In particular \(G(t)^2/t\to1\). Also \(G(t+1)^2/G(t)^2=(t+1/2)^2/t^2\). For \(a=1/4\),
+\[
+(t+1/2)^2(t-a)-t^2(t+1-a)=-1/16,
+\]
+so \(G(t)^2/(t-1/4)\) decreases to 1. For \(a=1/6\), the same difference is \(t/12-1/24>0\), so \(G(t)^2/(t-1/6)\) increases to 1. Thus \(t-1/4\le G(t)^2\le t-1/6\), or \(1/3\le v_k\le1/2\), as claimed.
+
+This argument proves the degree-one case mathematically, conditional only on standard probability results whose proofs are sketched above. Formalization tasks: gamma bounds, integer coefficient comparison, elementary integral, Poisson Poincare, shift identity, distribution identification and variance decomposition. Do not describe this as a solution of degree two or arbitrary finite degree; the Poisson–Gamma radial mixture relies on the linear polynomial.
