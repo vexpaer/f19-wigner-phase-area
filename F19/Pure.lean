@@ -519,3 +519,78 @@ theorem finite_pure_gaussian_iff (N : ℕ) (c : ℕ → ℂ) :
 #print axioms finite_pure_gaussian_iff
 
 end F19.Pure
+
+
+namespace F19.Pure
+
+-- The gamma-ratio recurrence yields monotone normalized squares.
+-- These polynomial certificates are the two signs needed for
+-- 1/3 ≤ Var(chi_{2k+2}) ≤ 1/2.
+theorem gamma_quarter_poly (t : ℝ) :
+    (t+1/2)^2*(t-1/4)-t^2*(t+1-1/4) = -1/16 := by ring
+
+theorem gamma_sixth_poly (t : ℝ) (ht : 1 ≤ t) :
+    0 < (t+1/2)^2*(t-1/6)-t^2*(t+1-1/6) := by
+  calc
+    _ = t/12-1/24 := by ring
+    _ > 0 := by linarith
+
+theorem chi_increment_sq (t h v : ℝ) (ht : 0 < t)
+    (hv : v = 2*t-h^2) :
+    (h*(1+1/(2*t))-h)^2 = 1/(2*t)-v/(4*t^2) := by
+  rw [hv]
+  field_simp [ht.ne']
+  ring
+
+/-- The explicit gamma negative-part bound is dominated by the
+coefficient of the Poisson variance deficit, at every positive index. -/
+theorem qubit_negative_coeff_le (k : ℕ) (hk : 1 ≤ k) :
+    1/((2:ℝ)^k*((k:ℝ)+1)*((k:ℝ)+2)*(k.factorial:ℝ)) ≤ 1/(12*(k:ℝ)) := by
+  have hkR : (1:ℝ) ≤ k := by exact_mod_cast hk
+  have hkpos : (0:ℝ) < k := by linarith
+  have hp : (2:ℝ) ≤ 2^k := by
+    calc
+      (2:ℝ) = 2^1 := by norm_num
+      _ ≤ 2^k := by exact pow_le_pow_right₀ (by norm_num) hk
+  have hf : (1:ℝ) ≤ k.factorial := by
+    exact_mod_cast Nat.factorial_pos k
+  have hpoly : 6*(k:ℝ) ≤ ((k:ℝ)+1)*((k:ℝ)+2) := by
+    rcases eq_or_lt_of_le hk with h | h
+    · subst k; norm_num
+    · have h2 : (2:ℝ) ≤ k := by exact_mod_cast (show 2 ≤ k by omega)
+      nlinarith [mul_nonneg (show 0 ≤ (k:ℝ)-1 by linarith)
+        (show 0 ≤ (k:ℝ)-2 by linarith)]
+  have hD : 12*(k:ℝ) ≤ (2:ℝ)^k*((k:ℝ)+1)*((k:ℝ)+2)*(k.factorial:ℝ) := by
+    calc
+      _ = 2*(6*(k:ℝ))*1 := by ring
+      _ ≤ 2*(((k:ℝ)+1)*((k:ℝ)+2))*1 := by gcongr
+      _ ≤ (2:ℝ)^k*(((k:ℝ)+1)*((k:ℝ)+2))* (k.factorial:ℝ) := by gcongr
+      _ = _ := by ring
+  exact one_div_le_one_div_of_le (by positivity) hD
+
+/-- The key positive-index coefficient comparison uses only the
+lower variance bound for the preceding gamma component. -/
+theorem qubit_negative_coeff_variance (k : ℕ) (hk : 1 ≤ k) (v : ℝ)
+    (hv : 1/3 ≤ v) :
+    1/((2:ℝ)^k*((k:ℝ)+1)*((k:ℝ)+2)*(k.factorial:ℝ)) ≤ v/(4*(k:ℝ)) := by
+  have hkpos : (0:ℝ) < k := by exact_mod_cast (show 0 < k by omega)
+  calc
+    _ ≤ 1/(12*(k:ℝ)) := qubit_negative_coeff_le k hk
+    _ = (1/3)/(4*(k:ℝ)) := by ring
+    _ ≤ _ := div_le_div_of_nonneg_right hv (by positivity)
+
+-- Isolate the final algebra of the variance-deficit comparison for
+-- arbitrary real first/second moments and negative part.
+theorem qubit_deficit_algebra (mean second neg absMoment : ℝ)
+    (habs : absMoment = second-1+2*neg)
+    (hdeficit : second-mean^2+2*neg ≤ 1) :
+    absMoment ≤ mean^2 := by linarith
+
+#print axioms gamma_quarter_poly
+#print axioms gamma_sixth_poly
+#print axioms chi_increment_sq
+#print axioms qubit_negative_coeff_le
+#print axioms qubit_negative_coeff_variance
+#print axioms qubit_deficit_algebra
+
+end F19.Pure
