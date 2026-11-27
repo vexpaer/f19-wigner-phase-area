@@ -793,3 +793,87 @@ theorem laguerre_orthogonality (n m : ℕ) :
 #print axioms laguerre_orthogonality
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped BigOperators
+
+noncomputable def risingFour (x : ℝ) : ℝ := (x+1)*(x+2)*(x+3)*(x+4)
+
+theorem factorial_add_four (j : ℕ) :
+    ((j+4).factorial : ℝ) = (j.factorial : ℝ)*risingFour (j : ℝ) := by
+  unfold risingFour
+  norm_num [Nat.factorial_succ, Nat.cast_mul, Nat.cast_add]
+  <;> ring
+
+theorem fourth_moment_term (m i : ℕ) (hi : i < 5) :
+    ((-1 : ℝ)^(m+i)*((m+4).choose (m+i) : ℝ)/((m+i).factorial : ℝ)) *
+      ((-1 : ℝ)^(m+4)*((4+(m+i)).factorial : ℝ)*((4+(m+i)).choose (m+4) : ℝ)) =
+    (-1 : ℝ)^i * (risingFour ((m+i : ℕ) : ℝ))^2 /
+      (((4-i).factorial : ℝ)*(i.factorial : ℝ)) := by
+  have hi' : i ≤ 4 := by omega
+  have h1 : m+i ≤ m+4 := by omega
+  have h2 : m+4 ≤ m+i+4 := by omega
+  rw [show 4+(m+i) = m+i+4 by omega]
+  rw [← Nat.choose_symm h1, show m+4-(m+i) = 4-i by omega,
+    ← Nat.choose_symm h2, show m+i+4-(m+4) = i by omega]
+  rw [Nat.cast_choose ℝ (show 4-i ≤ m+4 by omega),
+    Nat.cast_choose ℝ (show i ≤ m+i+4 by omega),
+    show m+4-(4-i)=m+i by omega, show m+i+4-i=m+4 by omega,
+    factorial_add_four]
+  have hsign : (-1 : ℝ)^(m+i)*(-1 : ℝ)^(m+4) = (-1 : ℝ)^i := by
+    rw [pow_add, pow_add]
+    norm_num
+    have hm : (-1 : ℝ)^m * (-1 : ℝ)^m = 1 := by rw [← mul_pow]; norm_num
+    calc
+      _ = ((-1 : ℝ)^m*(-1 : ℝ)^m)*(-1 : ℝ)^i := by ring
+      _ = _ := by rw [hm, one_mul]
+  have hf (j : ℕ) : (j.factorial : ℝ) ≠ 0 := by exact_mod_cast Nat.factorial_ne_zero j
+  calc
+    _ = ((-1 : ℝ)^(m+i)*(-1 : ℝ)^(m+4)) *
+        (risingFour ((m+i : ℕ) : ℝ))^2 /
+        (((4-i).factorial : ℝ)*(i.factorial : ℝ)) := by
+      field_simp [hf]
+      <;> ring
+    _ = _ := by rw [hsign]
+
+set_option maxHeartbeats 4000000 in
+theorem laguerre_fourth_moment (n : ℕ) :
+    (∫ x in Ioi (0 : ℝ), Real.exp (-x)*x^4*laguerre n x*laguerre n x) =
+      momentPoly (n : ℝ) := by
+  rw [laguerre_product_integral]
+  by_cases hn : n < 4
+  · interval_cases n <;> norm_num [momentPoly, Finset.sum_range_succ, Nat.choose, Nat.factorial]
+  · let m := n-4
+    have hnm : n = m+4 := by dsimp [m]; omega
+    rw [hnm]
+    change (∑ j ∈ Finset.range (m+5),
+      ((-1 : ℝ)^j*((m+4).choose j : ℝ)/(j.factorial : ℝ)) *
+        ((-1 : ℝ)^(m+4)*((4+j).factorial : ℝ)*((4+j).choose (m+4) : ℝ))) =
+      momentPoly ((m+4 : ℕ) : ℝ)
+    rw [Finset.sum_range_add]
+    have hz : (∑ j ∈ Finset.range m,
+      ((-1 : ℝ)^j*((m+4).choose j : ℝ)/(j.factorial : ℝ)) *
+        ((-1 : ℝ)^(m+4)*((4+j).factorial : ℝ)*((4+j).choose (m+4) : ℝ))) = 0 := by
+      apply Finset.sum_eq_zero
+      intro j hj
+      have hj' : 4+j < m+4 := by have := Finset.mem_range.mp hj; omega
+      simp [Nat.choose_eq_zero_of_lt hj']
+    rw [hz, zero_add]
+    calc
+      _ = ∑ i ∈ Finset.range 5, (-1 : ℝ)^i * (risingFour ((m+i : ℕ) : ℝ))^2 /
+          (((4-i).factorial : ℝ)*(i.factorial : ℝ)) := by
+        apply Finset.sum_congr rfl
+        intro i hi
+        exact fourth_moment_term m i (Finset.mem_range.mp hi)
+      _ = _ := by
+        norm_num [Finset.sum_range_succ, risingFour, momentPoly, Nat.factorial, Nat.cast_add]
+        <;> ring
+
+#print axioms factorial_add_four
+#print axioms fourth_moment_term
+#print axioms laguerre_fourth_moment
+
+end F19
