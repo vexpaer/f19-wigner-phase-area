@@ -301,7 +301,8 @@ theorem integral_cauchy_sq {α : Type*} [MeasurableSpace α] (μ : Measure α)
         apply integral_congr_ae
         exact Filter.Eventually.of_forall (fun x => by ring)
       _ = A-2*k*C+k^2*B := by
-        rw [integral_add (hf.sub hfg') hgg', integral_sub hf hfg',
+        have hsub : Integrable (fun x => f x^2 - (2*k)*(f x*g x)) μ := hf.sub hfg'
+        rw [integral_add hsub hgg', integral_sub hf hfg',
           integral_const_mul, integral_const_mul]
   have hnon : 0 ≤ A-2*k*C+k^2*B := by
     rw [← he]
@@ -330,7 +331,9 @@ theorem optimized_moment_bound (n A a : ℝ) (ha : 0 < a)
     rw [hfrac] at hCS
     calc
       A^2 ≤ (1/2+1/6)*(Real.pi*a/(2*Real.sqrt 2)) := hCS
-      _ = Real.pi*a/(3*Real.sqrt 2) := by field_simp [hs.ne']; <;> ring
+      _ = Real.pi*a/(3*Real.sqrt 2) := by
+        field_simp [hs.ne']
+        <;> ring
   have hp : (A^2)^4 ≤ (Real.pi*a/(3*Real.sqrt 2))^4 := by
     have hnon : 0 ≤ A^2 := sq_nonneg _
     gcongr
