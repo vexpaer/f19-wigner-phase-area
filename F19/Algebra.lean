@@ -260,6 +260,7 @@ theorem gammaRatio_factorial (n : ℕ) :
   rw [show ((n : ℝ)+2)/2 = (n : ℝ)/2+1 by ring]
   field_simp [hg, hf]
   field_simp [ht] at h
+  simp only [show ((n : ℝ)+2)/2 = (n : ℝ)/2+1 by ring] at h ⊢
   linear_combination Real.Gamma ((n : ℝ)/2+1) * h
 
 theorem fock_comparison_factorial (n : ℕ) (A : ℝ) (hn : 1 ≤ n)
