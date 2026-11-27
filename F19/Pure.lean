@@ -181,3 +181,51 @@ theorem fejer_l2_error_tendsto (c : ℕ → ℂ) (hc : Summable (fun n => ‖c n
 #print axioms fejer_l2_error_tendsto
 
 end F19.Pure
+
+
+namespace F19.Pure
+
+-- The cross Wigner function with one vacuum input has an exact norm
+-- identity, not the factor-two estimate for generic cross Wigner functions.
+-- The argument below concerns the explicit phase-space functions.
+noncomputable def bargmannPolynomial (N : ℕ) (c : ℕ → ℂ) (z : ℂ) : ℂ :=
+  ∑ n ∈ Finset.range (N+1), c n * z^n / (Real.sqrt (n.factorial : ℝ) : ℂ)
+
+noncomputable def husimiAmplitude (F : ℂ → ℂ) (z : ℂ) : ℝ :=
+  Real.exp (-‖z‖^2/2) * ‖F z‖
+
+noncomputable def vacuumCrossWigner (F : ℂ → ℂ) (z : ℂ) : ℂ :=
+  ((Real.exp (-‖z‖^2)/Real.pi : ℝ) : ℂ) * F (Real.sqrt 2 • z)
+
+theorem vacuumCross_pointwise (F : ℂ → ℂ) (z : ℂ) :
+    ‖vacuumCrossWigner F z‖ = husimiAmplitude F (Real.sqrt 2 • z) / Real.pi := by
+  unfold vacuumCrossWigner husimiAmplitude
+  rw [norm_mul, Complex.norm_real, Real.norm_eq_abs,
+    abs_of_pos (div_pos (Real.exp_pos _) Real.pi_pos), norm_smul,
+    Real.norm_eq_abs, abs_of_nonneg (Real.sqrt_nonneg 2), mul_pow,
+    Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2)]
+  rw [show -(2 * ‖z‖^2)/2 = -‖z‖^2 by ring]
+  ring
+
+theorem vacuumCross_integral (F : ℂ → ℂ) :
+    (∫ z : ℂ, ‖vacuumCrossWigner F z‖) =
+      (∫ z : ℂ, husimiAmplitude F z)/(2*Real.pi) := by
+  simp_rw [vacuumCross_pointwise F, div_eq_mul_inv]
+  rw [integral_mul_const,
+    Measure.integral_comp_smul_of_nonneg volume (husimiAmplitude F) (Real.sqrt 2)
+      (hR := Real.sqrt_nonneg 2),
+    Complex.finrank_real_complex, Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2), smul_eq_mul]
+  ring
+
+-- The right hand side is the normalized Bargmann L¹ functional H(F).
+-- No normalization of the finite coefficient sequence is needed.
+theorem finite_vacuum_cross_identity (N : ℕ) (c : ℕ → ℂ) :
+    (∫ z : ℂ, ‖vacuumCrossWigner (bargmannPolynomial N c) z‖) =
+      (∫ z : ℂ, husimiAmplitude (bargmannPolynomial N c) z)/(2*Real.pi) :=
+  vacuumCross_integral _
+
+#print axioms vacuumCross_pointwise
+#print axioms vacuumCross_integral
+#print axioms finite_vacuum_cross_identity
+
+end F19.Pure
