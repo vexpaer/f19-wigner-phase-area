@@ -332,8 +332,13 @@ theorem qubitWignerPoly_negative_iff (a b x y : ℝ) (hb : b ≠ 0) :
     qubitWignerPoly a b x y < 0 ↔ (x+a/(Real.sqrt 2*b))^2+y^2 < 1/2 := by
   rw [qubitWignerPoly_square a b x y hb]
   have hb2 : 0 < b^2 := sq_pos_of_ne_zero hb
-  rw [mul_neg_iff_of_pos_left hb2]
-  constructor <;> intro h <;> linarith
+  constructor
+  · intro h
+    by_contra! h'
+    have hnon : 0 ≤ 2*((x+a/(Real.sqrt 2*b))^2+y^2)-1 := by linarith
+    exact (not_lt_of_ge (mul_nonneg hb2.le hnon)) h
+  · intro h
+    exact mul_neg_of_pos_of_neg hb2 (by linarith)
 
 #print axioms qubitWignerPoly_square
 #print axioms qubitWignerPoly_negative_iff
