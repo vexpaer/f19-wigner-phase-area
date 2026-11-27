@@ -1402,3 +1402,137 @@ theorem chi_component_bound (k : ℕ) :
 #print axioms chi_component_bound
 
 end F19.Pure
+
+
+namespace F19.Pure
+open scoped NNReal
+
+theorem natSucc_le_twoPow (k : ℕ) : (k:ℝ)+1 ≤ (2:ℝ)^k := by
+  induction k with
+  | zero => norm_num
+  | succ k ih =>
+    rw [Nat.cast_succ, pow_succ]
+    have hk : (0:ℝ) ≤ k := Nat.cast_nonneg k
+    linarith
+
+theorem factorialEnvelope_summable (r : ℝ≥0) (f : ℕ → ℝ) (C : ℝ)
+    (hC : 0 ≤ C) (hf : ∀ k, ‖f k‖ ≤ C*((k:ℝ)+1)) :
+    Summable (fun k => ((r:ℝ)^k/(k.factorial:ℝ))*‖f k‖) := by
+  have hs := (Real.summable_pow_div_factorial (2*(r:ℝ))).mul_left C
+  apply Summable.of_nonneg_of_le (fun k => by positivity) _ hs
+  intro k
+  calc
+    _ ≤ ((r:ℝ)^k/(k.factorial:ℝ))*(C*((k:ℝ)+1)) :=
+      mul_le_mul_of_nonneg_left (hf k) (by positivity)
+    _ ≤ ((r:ℝ)^k/(k.factorial:ℝ))*(C*2^k) :=
+      mul_le_mul_of_nonneg_left (mul_le_mul_of_nonneg_left (natSucc_le_twoPow k) hC) (by positivity)
+    _ = _ := by rw [mul_pow]; ring
+
+noncomputable def poissonExpect (r : ℝ≥0) (f : ℕ → ℝ) : ℝ :=
+  ∑' k, ProbabilityTheory.poissonPMFReal r k*f k
+
+theorem poissonExpect_summable (r : ℝ≥0) (f : ℕ → ℝ) (C : ℝ)
+    (hC : 0 ≤ C) (hf : ∀ k, ‖f k‖ ≤ C*((k:ℝ)+1)) :
+    Summable (fun k => ProbabilityTheory.poissonPMFReal r k*f k) := by
+  apply Summable.of_norm
+  have hs := (factorialEnvelope_summable r f C hC hf).mul_left (Real.exp (-(r:ℝ)))
+  convert hs using 1
+  ext k
+  rw [norm_mul, Real.norm_of_nonneg ProbabilityTheory.poissonPMFReal_nonneg]
+  unfold ProbabilityTheory.poissonPMFReal
+  ring
+
+theorem chiMean_sq_le (k : ℕ) : chiMean k^2 ≤ 2*((k:ℝ)+1) := by
+  have hv := (chiVariance_bounds k).1
+  unfold chiVariance at hv
+  linarith
+
+theorem chiMean_le (k : ℕ) : chiMean k ≤ 2*((k:ℝ)+1) := by
+  have h := chiMean_sq_le k
+  have hk : (0:ℝ) ≤ k := Nat.cast_nonneg k
+  nlinarith only [h, hk, sq_nonneg (chiMean k-1)]
+
+theorem chiDelta_le (k : ℕ) : deltaSq chiMean k ≤ 1/2 := by
+  rw [chiDelta_formula]
+  have h0 : 0 ≤ chiVariance k := by linarith [(chiVariance_bounds k).1]
+  have h1 : (2:ℝ) ≤ 2*((k:ℝ)+1) := by linarith [Nat.cast_nonneg (α := ℝ) k]
+  have h2 := one_div_le_one_div_of_le (by norm_num : (0:ℝ)<2) h1
+  exact (sub_le_self _ (div_nonneg h0 (by positivity))).trans h2
+
+theorem chiShiftDelta_le (k : ℕ) : (k:ℝ)*deltaSq chiMean (k-1) ≤ 1 := by
+  have h := chi_component_bound k
+  have h0 := gammaNegative_nonneg k
+  have h1 := (chiVariance_bounds k).1
+  linarith
+
+theorem gammaNegative_le_one (k : ℕ) : gammaNegative k ≤ 1 := by
+  have h := chi_component_bound k
+  have h0 := (chiVariance_bounds k).1
+  have h1 : 0 ≤ (k:ℝ)*deltaSq chiMean (k-1) := mul_nonneg (Nat.cast_nonneg k) (sq_nonneg _)
+  linarith
+
+/-- Poisson-Gamma moment inequality, expressed directly in the
+explicit component series. The identification of the radial Gaussian
+law with these series is a separate analytic step. -/
+theorem poissonGamma_moment_inequality (r : ℝ≥0) :
+    poissonExpect r (fun k => 2*((k:ℝ)+1)+gammaNegative k) - 1 ≤
+      (poissonExpect r chiMean)^2 := by
+  have hm : ∀ k, ‖chiMean k‖ ≤ 2*((k:ℝ)+1) := fun k => by
+    rw [Real.norm_of_nonneg (chiMean_nonneg k)]
+    exact chiMean_le k
+  have hs : ∀ k, ‖chiMean k^2‖ ≤ 2*((k:ℝ)+1) := fun k => by
+    rw [Real.norm_of_nonneg (sq_nonneg _)]
+    exact chiMean_sq_le k
+  have hd : ∀ k, ‖deltaSq chiMean k‖ ≤ 2*((k:ℝ)+1) := fun k => by
+    rw [Real.norm_of_nonneg (sq_nonneg _)]
+    linarith [chiDelta_le k, Nat.cast_nonneg (α := ℝ) k]
+  have hp := poisson_poincare r chiMean
+    (factorialEnvelope_summable r chiMean 2 (by norm_num) hm)
+    (factorialEnvelope_summable r (fun k => chiMean k^2) 2 (by norm_num) hs)
+    (factorialEnvelope_summable r (deltaSq chiMean) 2 (by norm_num) hd)
+  have hV : ∀ k, ‖chiVariance k‖ ≤ 2*((k:ℝ)+1) := fun k => by
+    have h := chiVariance_bounds k
+    rw [Real.norm_of_nonneg (by linarith [h.1] : 0 ≤ chiVariance k)]
+    linarith [h.2, Nat.cast_nonneg (α := ℝ) k]
+  have hD : ∀ k, ‖(k:ℝ)*deltaSq chiMean (k-1)‖ ≤ 2*((k:ℝ)+1) := fun k => by
+    rw [Real.norm_of_nonneg (mul_nonneg (Nat.cast_nonneg k) (sq_nonneg _))]
+    linarith [chiShiftDelta_le k, Nat.cast_nonneg (α := ℝ) k]
+  have hN : ∀ k, ‖gammaNegative k‖ ≤ 2*((k:ℝ)+1) := fun k => by
+    rw [Real.norm_of_nonneg (gammaNegative_nonneg k)]
+    linarith [gammaNegative_le_one k, Nat.cast_nonneg (α := ℝ) k]
+  have hss := poissonExpect_summable r (fun k => chiMean k^2) 2 (by norm_num) hs
+  have hsv := poissonExpect_summable r chiVariance 2 (by norm_num) hV
+  have hsd := poissonExpect_summable r (fun k => (k:ℝ)*deltaSq chiMean (k-1)) 2 (by norm_num) hD
+  have hsn := poissonExpect_summable r gammaNegative 2 (by norm_num) hN
+  have hshift : (∑' k, ProbabilityTheory.poissonPMFReal r k*((k:ℝ)*deltaSq chiMean (k-1))) =
+      (r:ℝ)*(∑' k, ProbabilityTheory.poissonPMFReal r k*deltaSq chiMean k) := by
+    have h := poisson_shift r (deltaSq chiMean) (by simpa only [mul_assoc] using hsd)
+    simpa only [mul_assoc] using h
+  have hbound : (∑' k, ProbabilityTheory.poissonPMFReal r k*
+        (chiVariance k+(k:ℝ)*deltaSq chiMean (k-1)+gammaNegative k)) ≤ 1 := by
+    have hsum : Summable (fun k => ProbabilityTheory.poissonPMFReal r k*
+        (chiVariance k+(k:ℝ)*deltaSq chiMean (k-1)+gammaNegative k)) := by
+      simpa only [mul_add] using (hsv.add hsd).add hsn
+    rw [← poisson_mass r]
+    exact hsum.tsum_le_tsum
+      (fun k => by simpa using mul_le_mul_of_nonneg_left (chi_component_bound k)
+        (ProbabilityTheory.poissonPMFReal_nonneg (r := r) (n := k)))
+      (ProbabilityTheory.poissonPMFRealSum r).summable
+  simp only [mul_add] at hbound
+  rw [(hsv.add hsd).tsum_add hsn, hsv.tsum_add hsd, hshift] at hbound
+  have he : (fun k => ProbabilityTheory.poissonPMFReal r k*(2*((k:ℝ)+1)+gammaNegative k)) =
+      (fun k => ProbabilityTheory.poissonPMFReal r k*(chiMean k^2) +
+        ProbabilityTheory.poissonPMFReal r k*chiVariance k +
+        ProbabilityTheory.poissonPMFReal r k*gammaNegative k) := by
+    funext k
+    unfold chiVariance
+    ring
+  unfold poissonExpect
+  rw [he, (hss.add hsv).tsum_add hsn, hss.tsum_add hsv]
+  linarith only [hp, hbound]
+
+#print axioms factorialEnvelope_summable
+#print axioms poissonExpect_summable
+#print axioms poissonGamma_moment_inequality
+
+end F19.Pure
