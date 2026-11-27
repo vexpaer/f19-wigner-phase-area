@@ -42,7 +42,7 @@ theorem sharp_limit {α : Type*} [MeasurableSpace α] (μ : Measure α)
   · exact (ENNReal.continuous_pow 2).continuousAt.tendsto.comp hh
   · exact hle
 
-/-- A useful form of the preceding result when the Husimi integrands admit
+/-- A useful form of the preceding result when the Husimi integrands have
 a common integrable majorant. -/
 theorem sharp_limit_dominated {α β : Type*} [MeasurableSpace α] [MeasurableSpace β]
     (μ : Measure α) (ν : Measure β) (w : ℕ → α → ℝ≥0∞) (W : α → ℝ≥0∞)
