@@ -16,4 +16,10 @@ jobs:
           if grep -En '^[[:space:]]*(axiom|opaque)[[:space:]]|\b(sorry|admit)\b' F19.lean F19/*.lean; then
             exit 1
           fi
-          lake env lean F19/Algebra.lean
+          set -o pipefail
+          lake env lean F19/Algebra.lean | tee lean-axioms.txt
+          if grep -Eq 'sorryAx' lean-axioms.txt; then exit 1; fi
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lean-axiom-report
+          path: lean-axioms.txt
