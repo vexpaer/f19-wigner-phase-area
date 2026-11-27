@@ -446,3 +446,125 @@ theorem radial_moment_comparison (n : ℕ) (f : ℝ → ℝ) (a : ℝ)
 #print axioms radial_moment_comparison
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set Filter
+open scoped Topology
+
+noncomputable def quarticPrimitive (x : ℝ) : ℝ :=
+  (Real.log ((x+1)^2+1) - Real.log ((x-1)^2+1))/4 +
+    (Real.arctan (x+1)+Real.arctan (x-1))/2
+
+theorem quarticPrimitive_deriv (x : ℝ) :
+    HasDerivAt quarticPrimitive (4/(x^4+4)) x := by
+  have hp : 0 < (x+1)^2+1 := by positivity
+  have hq : 0 < (x-1)^2+1 := by positivity
+  have hd : 0 < x^4+4 := by positivity
+  have h1 : HasDerivAt (fun y : ℝ => (y+1)^2+1) (2*(x+1)) x := by
+    convert (((hasDerivAt_id x).add_const 1).pow 2).add_const 1 using 1 <;> ring
+  have h2 : HasDerivAt (fun y : ℝ => (y-1)^2+1) (2*(x-1)) x := by
+    convert (((hasDerivAt_id x).sub_const 1).pow 2).add_const 1 using 1 <;> ring
+  have h3 : HasDerivAt (fun y : ℝ => Real.arctan (y+1)) (1/(1+(x+1)^2)) x := by
+    simpa using (Real.hasDerivAt_arctan (x+1)).comp x ((hasDerivAt_id x).add_const 1)
+  have h4 : HasDerivAt (fun y : ℝ => Real.arctan (y-1)) (1/(1+(x-1)^2)) x := by
+    simpa using (Real.hasDerivAt_arctan (x-1)).comp x ((hasDerivAt_id x).sub_const 1)
+  unfold quarticPrimitive
+  convert (((h1.log hp.ne').sub (h2.log hq.ne')).div_const 4).add
+    ((h3.add h4).div_const 2) using 1
+  have hp' : 0 < 1+(x+1)^2 := by positivity
+  have hq' : 0 < 1+(x-1)^2 := by positivity
+  field_simp [hp.ne', hq.ne', hp'.ne', hq'.ne', hd.ne']
+  <;> ring
+
+theorem quarticPrimitive_zero : quarticPrimitive 0 = 0 := by
+  unfold quarticPrimitive
+  norm_num [Real.arctan_neg]
+
+theorem quarticPrimitive_limit :
+    Tendsto quarticPrimitive atTop (𝓝 (Real.pi/2)) := by
+  have hi : Tendsto (fun x : ℝ => x⁻¹) atTop (𝓝 0) := tendsto_inv_atTop_zero
+  have hp : Tendsto (fun x : ℝ => (1+x⁻¹)^2+x⁻¹^2) atTop (𝓝 1) := by
+    simpa using ((tendsto_const_nhds.add hi).pow 2).add (hi.pow 2)
+  have hq : Tendsto (fun x : ℝ => (1-x⁻¹)^2+x⁻¹^2) atTop (𝓝 1) := by
+    simpa using ((tendsto_const_nhds.sub hi).pow 2).add (hi.pow 2)
+  have hratio : Tendsto (fun x : ℝ => ((x+1)^2+1)/((x-1)^2+1)) atTop (𝓝 1) := by
+    have h := hp.div hq one_ne_zero
+    simp only [div_one] at h
+    refine h.congr' ?_
+    filter_upwards [eventually_gt_atTop (0 : ℝ)] with x hx
+    have hq' : 0 < (1-x⁻¹)^2+x⁻¹^2 := by positivity
+    have hq'' : 0 < (x-1)^2+1 := by positivity
+    field_simp [hx.ne', hq'.ne', hq''.ne']
+    <;> ring
+  have hlog : Tendsto (fun x : ℝ => Real.log ((x+1)^2+1) -
+      Real.log ((x-1)^2+1)) atTop (𝓝 0) := by
+    have h := (Real.continuousAt_log (show (1 : ℝ) ≠ 0 by norm_num)).tendsto.comp hratio
+    simp only [Real.log_one] at h
+    refine h.congr' (Filter.Eventually.of_forall fun x => ?_)
+    exact Real.log_div (by positivity) (by positivity)
+  have hatan : Tendsto Real.arctan atTop (𝓝 (Real.pi/2)) :=
+    tendsto_nhds_of_tendsto_nhdsWithin Real.tendsto_arctan_atTop
+  have h1 := hatan.comp (tendsto_atTop_add_const_right atTop (1 : ℝ) tendsto_id)
+  have h2 : Tendsto (fun x : ℝ => Real.arctan (x-1)) atTop (𝓝 (Real.pi/2)) := by
+    simpa [Function.comp_def, sub_eq_add_neg] using
+      hatan.comp (tendsto_atTop_add_const_right atTop (-1 : ℝ) tendsto_id)
+  have h1' : Tendsto (fun x : ℝ => Real.arctan (x+1)) atTop (𝓝 (Real.pi/2)) := h1
+  unfold quarticPrimitive
+  convert (hlog.div_const 4).add ((h1'.add h2).div_const 2) using 1 <;> ring
+
+noncomputable def scaledQuarticPrimitive (a t : ℝ) : ℝ :=
+  (a/Real.sqrt 2) * quarticPrimitive ((Real.sqrt 2/a)*t)
+
+theorem scaledQuarticPrimitive_deriv (a t : ℝ) (ha : 0 < a) :
+    HasDerivAt (scaledQuarticPrimitive a) (quarticWeight a t)⁻¹ t := by
+  have hs : 0 < Real.sqrt (2 : ℝ) := Real.sqrt_pos.2 (by norm_num)
+  have hs4 : (Real.sqrt (2 : ℝ))^4 = 4 := by
+    calc
+      _ = ((Real.sqrt (2 : ℝ))^2)^2 := by ring
+      _ = 4 := by rw [Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2)]; norm_num
+  unfold scaledQuarticPrimitive
+  convert ((quarticPrimitive_deriv ((Real.sqrt 2/a)*t)).comp t
+    ((hasDerivAt_id t).const_mul (Real.sqrt 2/a))).const_mul (a/Real.sqrt 2) using 1
+  have he : ((Real.sqrt 2/a)*t)^4+4 = 4*quarticWeight a t := by
+    unfold quarticWeight
+    rw [mul_pow, div_pow, hs4, div_pow]
+    ring
+  rw [he]
+  have hw := quarticWeight_pos a t
+  field_simp [ha.ne', hs.ne', hw.ne']
+  <;> ring
+
+theorem scaledQuarticPrimitive_limit (a : ℝ) (ha : 0 < a) :
+    Tendsto (scaledQuarticPrimitive a) atTop (𝓝 (Real.pi*a/(2*Real.sqrt 2))) := by
+  have hs : 0 < Real.sqrt (2 : ℝ) := Real.sqrt_pos.2 (by norm_num)
+  have hlin : Tendsto (fun t : ℝ => (Real.sqrt 2/a)*t) atTop atTop :=
+    (tendsto_const_mul_atTop_of_pos (div_pos hs ha)).2 tendsto_id
+  unfold scaledQuarticPrimitive
+  convert (quarticPrimitive_limit.comp hlin).const_mul (a/Real.sqrt 2) using 1
+  ring
+
+theorem quarticWeight_integrable (a : ℝ) (ha : 0 < a) :
+    IntegrableOn (fun t => (quarticWeight a t)⁻¹) (Ioi (0 : ℝ)) := by
+  exact integrableOn_Ioi_deriv_of_nonneg'
+    (fun t _ => scaledQuarticPrimitive_deriv a t ha)
+    (fun t _ => (inv_pos.mpr (quarticWeight_pos a t)).le)
+    (scaledQuarticPrimitive_limit a ha)
+
+theorem quarticWeight_integral (a : ℝ) (ha : 0 < a) :
+    (∫ t in Ioi (0 : ℝ), (quarticWeight a t)⁻¹) =
+      Real.pi*a/(2*Real.sqrt 2) := by
+  have h := integral_Ioi_of_hasDerivAt_of_nonneg'
+    (a := (0 : ℝ))
+    (fun t _ => scaledQuarticPrimitive_deriv a t ha)
+    (fun t _ => (inv_pos.mpr (quarticWeight_pos a t)).le)
+    (scaledQuarticPrimitive_limit a ha)
+  simpa [scaledQuarticPrimitive, quarticPrimitive_zero] using h
+
+#print axioms quarticPrimitive_deriv
+#print axioms quarticPrimitive_limit
+#print axioms quarticWeight_integrable
+#print axioms quarticWeight_integral
+
+end F19
