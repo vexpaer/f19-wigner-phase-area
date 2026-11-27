@@ -1,0 +1,49 @@
+name: Publish phase-invariant research snapshot
+on:
+  pull_request:
+    types: [opened]
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: publish-phase-invariant-v0.1.0
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'vexpaer/f19-wigner-phase-area' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'release-v0.1.0'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: a54d82a2317736bbb83c3e3aba1378e6f0827cda
+          persist-credentials: false
+      - name: Build manuscript PDF
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq texlive-latex-recommended texlive-latex-extra texlive-fonts-recommended
+          cd paper
+          pdflatex -interaction=nonstopmode -halt-on-error manuscript.tex
+          pdflatex -interaction=nonstopmode -halt-on-error manuscript.tex
+          cp manuscript.pdf f19-phase-invariant.pdf
+      - name: Publish pinned GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: vexpaer/f19-wigner-phase-area
+        run: |
+          cat > /tmp/release-notes.md <<'EOF'
+          Research snapshot: **A sharp Wigner–Husimi inequality for phase-invariant bosonic states**, Ximing Wang (vexpaer@gmail.com).
+
+          Proves the sharp constant 1/(8π) for phase-invariant single-mode states, including countable Fock mixtures. The explicit planar series theorem, strict nonvacuum comparison and finite-RHS absolute convergence are Lean verified. The operator identification is proved separately in the manuscript.
+
+          Lean 4.19.0 / Mathlib v4.19.0. [Successful CI #82](https://github.com/vexpaer/f19-wigner-phase-area/actions/runs/45998583445). No custom axioms or sorryAx in the audited theorems.
+
+          This is a partial result on F19, not a solution of the general conjecture. AI assistance is disclosed; independent review and novelty verification remain pending.
+          EOF
+          if gh release view v0.1.0 >/dev/null 2>&1; then
+            echo "Release already exists; refusing to replace it."
+            exit 1
+          fi
+          gh release create v0.1.0 paper/f19-phase-invariant.pdf paper/manuscript.tex --target a54d82a2317736bbb83c3e3aba1378e6f0827cda --title "v0.1.0 — Phase-invariant Wigner–Husimi inequality" --notes-file /tmp/release-notes.md
+          gh release view v0.1.0 --json url,tagName,isDraft,assets
