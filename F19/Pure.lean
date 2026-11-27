@@ -373,7 +373,8 @@ theorem crossFockKernel_range (N m n : ℕ) (hm : m ≤ N) (hn : n ≤ N) (z : �
       (crossFockCoeff m n k : ℂ) * z^(m-k) * (star z)^(n-k) := by
   unfold crossFockKernel
   apply Finset.sum_subset
-  · apply Finset.range_subset_range.mpr
+  · intro k hk
+    simp only [Finset.mem_range] at hk ⊢
     omega
   · intro k hk hnot
     have hlt : min m n < k := by
@@ -416,7 +417,7 @@ theorem finiteWigner_jet_identity (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
       intro m hm
       apply Finset.sum_congr rfl
       intro n hn
-      rw [crossFockKernel_range N m n (by simpa [S, Finset.mem_range] using hm) (by simpa [S, Finset.mem_range] using hn),
+      rw [crossFockKernel_range N m n (by have h := Finset.mem_range.mp hm; omega) (by have h := Finset.mem_range.mp hn; omega),
         Finset.mul_sum]
       apply Finset.sum_congr rfl
       intro k hk
@@ -434,9 +435,11 @@ theorem finiteWigner_jet_identity (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
       unfold bargmannJet
       apply Finset.sum_congr rfl
       intro k hk
-      simp only [star_sum, Finset.mul_sum, Finset.sum_mul]
+      simp only [star_sum]
+      rw [Finset.sum_mul, Finset.mul_sum]
       apply Finset.sum_congr rfl
       intro m hm
+      rw [Finset.mul_sum, Finset.mul_sum]
       apply Finset.sum_congr rfl
       intro n hn
       ring
@@ -489,7 +492,7 @@ theorem finiteWigner_gaussian_identity (N : ℕ) (c : ℕ → ℂ) :
       (Real.exp (-‖z‖^2)/Real.pi) * |jetAlternating N c (Real.sqrt 2 • z)| =
         g (Real.sqrt 2 • z) / Real.pi := by
     dsimp [g]
-    rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (Real.sqrt_nonneg 2),
+    rw [norm_mul, Complex.norm_real, Real.norm_eq_abs, abs_of_nonneg (Real.sqrt_nonneg 2),
       mul_pow, Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2),
       show -(2*‖z‖^2)/2 = -‖z‖^2 by ring]
     ring
