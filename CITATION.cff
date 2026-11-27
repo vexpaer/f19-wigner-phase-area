@@ -1,0 +1,22 @@
+cff-version: 1.2.0
+message: "If you use this work, please cite the corresponding archived release. Once available, use the version-specific Zenodo DOI."
+title: "A Sharp Wigner–Husimi Inequality for Phase-Invariant Bosonic States"
+authors:
+  - family-names: Wang
+    given-names: Ximing
+repository-code: https://github.com/vexpaer/f19-wigner-phase-area
+license: CC-BY-4.0
+keywords:
+  - Wigner negativity
+  - Husimi function
+  - phase-invariant bosonic states
+  - Lean 4
+  - formal verification
+preferred-citation:
+  type: unpublished
+  title: "A Sharp Wigner–Husimi Inequality for Phase-Invariant Bosonic States"
+  authors:
+    - family-names: Wang
+      given-names: Ximing
+  year: 2026
+  url: https://github.com/vexpaer/f19-wigner-phase-area

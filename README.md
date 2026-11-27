@@ -1,4 +1,10 @@
-# F19 — Wigner negativity costs phase-space area
+# A Sharp Wigner–Husimi Inequality for Phase-Invariant Bosonic States
+
+**Author:** Ximing Wang · Open Quantum Problem F19
+
+[![Lean verification](https://github.com/vexpaer/f19-wigner-phase-area/actions/workflows/lean.yml/badge.svg)](https://github.com/vexpaer/f19-wigner-phase-area/actions/workflows/lean.yml)
+
+[Manuscript source](paper/manuscript.tex) · [Latest GitHub release](https://github.com/vexpaer/f19-wigner-phase-area/releases/latest) · [Citation metadata](CITATION.cff)
 
 Research candidate for the phase-invariant sector of C. N. Gagatsos, *Wigner negativity costs phase-space area: A conjectured refinement of the Lieb–Solovej inequality at Rényi order one half*, [arXiv:2611.30969](https://arxiv.org/abs/2611.30969), Conjecture 1.
 
@@ -6,7 +12,7 @@ Research candidate for the phase-invariant sector of C. N. Gagatsos, *Wigner neg
 
 ## Verified release baseline
 
-- [Manuscript (LaTeX)](paper/manuscript.tex), Ximing Wang.
+- [Manuscript (LaTeX)](paper/manuscript.tex), Ximing Wang. The existing [v0.1.0 release PDF](https://github.com/vexpaer/f19-wigner-phase-area/releases/download/v0.1.0/f19-phase-invariant.pdf) is also available. Future archival releases should include a PDF built from the tagged source in `paper/manuscript.pdf`.
 - [CI run 82](https://github.com/vexpaer/f19-wigner-phase-area/actions/runs/45998583445), verified commit `ddeab5edf826752e1588932ac238f204d472ae57`, Lean 4.19.0 / Mathlib v4.19.0.
 - Main theorems: `F19.planar_diagonal_inequality`, `F19.planar_diagonal_strict`, `F19.diagonal_series_abs_summable_ae`, and `F19.planarDiagonalHusimiRoot_sq`.
 - The audited theorems depend only on `propext`, `Classical.choice`, and `Quot.sound`. The quantum operator identification and displacement covariance are mathematical arguments in the paper, not formalized here.
@@ -24,4 +30,13 @@ Write R(n)=Γ((n+2)/2)/Γ((n+1)/2). Gamma log-convexity and recurrence give R(n)
 
 For the physical extension to number-diagonal mixtures, Proposition 1 of Gagatsos establishes convexity/concavity reduction from componentwise pure-state inequalities. The countable mixture extension, including the planar integral and finite-RHS convergence, is now formalized in Lean; the identification of the radial formulas with quantum operators is supplied separately in the manuscript.
 
-The manuscript is a preprint draft; no journal acceptance or independent verification is claimed.
+The manuscript is a preprint draft; no journal acceptance or independent verification is claimed. The work was developed with AI assistance. The general F19 conjecture, including general coherent superpositions, remains open in this project.
+
+
+## Citation and archival releases
+
+For attribution, see [CITATION.cff](CITATION.cff). The Zenodo metadata in [.zenodo.json](.zenodo.json) describes a preprint and its accompanying formal proof artifacts. Once a DOI is assigned, cite the DOI for the precise release used. The release tag supplies the version; update metadata and the manuscript when the scope changes. See [RELEASING.md](RELEASING.md) for the release checklist.
+
+## License
+
+Original repository materials are available under [CC BY 4.0](LICENSE). Original software source files are also available under the [MIT License](LICENSE-MIT). Third-party dependencies retain their respective licenses.

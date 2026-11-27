@@ -1,0 +1,38 @@
+{
+  "title": "A Sharp Wigner–Husimi Inequality for Phase-Invariant Bosonic States",
+  "upload_type": "publication",
+  "publication_type": "preprint",
+  "creators": [
+    {
+      "name": "Wang, Ximing"
+    }
+  ],
+  "description": "<p>We establish the sharp Wigner–Husimi inequality conjectured by C. N. Gagatsos (arXiv:2611.30969) for every phase-invariant single-mode bosonic state, including arbitrary countable Fock mixtures without an energy cutoff. The proof uses Laguerre fourth moments, a gamma-ratio comparison, and a countable mixture argument. At finite Husimi square-root integral, equality holds precisely for the vacuum in this sector; displacement covariance extends the mathematical result to displaced phase-invariant states. The archive includes the manuscript and Lean 4 formalization of the explicit planar series inequality, strict comparison and convergence. The physical operator identification and displacement covariance are supplied by the manuscript rather than formalized. This is a partial result on Open Quantum Problem F19; the general conjecture remains open. The work was developed with AI assistance and has not yet undergone independent mathematical or journal peer review.</p>",
+  "access_right": "open",
+  "license": "cc-by-4.0",
+  "language": "eng",
+  "keywords": [
+    "quantum information",
+    "Wigner negativity",
+    "Husimi function",
+    "bosonic states",
+    "phase space",
+    "Fock states",
+    "functional inequalities",
+    "Lean 4",
+    "formal verification",
+    "Open Quantum Problem F19"
+  ],
+  "related_identifiers": [
+    {
+      "identifier": "https://arxiv.org/abs/2611.30969",
+      "relation": "references",
+      "scheme": "url"
+    },
+    {
+      "identifier": "https://github.com/vexpaer/f19-wigner-phase-area",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}
