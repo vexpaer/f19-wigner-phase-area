@@ -877,3 +877,118 @@ theorem laguerre_fourth_moment (n : ℕ) :
 #print axioms laguerre_fourth_moment
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped BigOperators
+
+noncomputable def radialFock (n : ℕ) (t : ℝ) : ℝ :=
+  Real.exp (-t)*laguerre n (2*t)
+
+theorem radialFock_integrable (n : ℕ) :
+    IntegrableOn (radialFock n) (Ioi (0 : ℝ)) := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  have he : radialFock n = (fun t => ∑ j ∈ Finset.range (n+1),
+    ((-1 : ℝ)^j*(n.choose j : ℝ)/(j.factorial : ℝ)*(2 : ℝ)^j) *
+      (Real.exp (-t)*t^j)) := by
+    funext t
+    unfold radialFock laguerre
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro j hj
+    rw [mul_pow]
+    ring
+  rw [he]
+  change Integrable _ μ
+  exact integrable_finset_sum _ (fun j _ => (exp_monomial_integrable j).const_mul _)
+
+theorem radialFock_sq (n : ℕ) (t : ℝ) :
+    radialFock n t ^ 2 =
+      Real.exp (-(2*t))*laguerre n (2*t)*laguerre n (2*t) := by
+  unfold radialFock
+  rw [mul_pow, pow_two (Real.exp (-t)), ← Real.exp_add]
+  rw [show -t + -t = -(2*t) by ring]
+  ring
+
+theorem radialFock_norm (n : ℕ) :
+    (∫ t in Ioi (0 : ℝ), radialFock n t ^ 2) = 1/2 := by
+  simp_rw [radialFock_sq]
+  have h := integral_comp_mul_left_Ioi
+    (fun x : ℝ => Real.exp (-x)*laguerre n x*laguerre n x)
+    (0 : ℝ) (by norm_num : 0 < (2 : ℝ))
+  simp only [mul_zero, smul_eq_mul, laguerre_norm_integral] at h
+  simpa using h
+
+theorem radialFock_fourth (n : ℕ) :
+    (∫ t in Ioi (0 : ℝ), t^4*radialFock n t ^ 2) =
+      momentPoly (n : ℝ)/32 := by
+  have he : (fun t => t^4*radialFock n t ^ 2) =
+      (fun t => (1/16 : ℝ)*(Real.exp (-(2*t))*(2*t)^4*
+        laguerre n (2*t)*laguerre n (2*t))) := by
+    funext t
+    rw [radialFock_sq]
+    ring
+  rw [he, integral_const_mul]
+  have h := integral_comp_mul_left_Ioi
+    (fun x : ℝ => Real.exp (-x)*x^4*laguerre n x*laguerre n x)
+    (0 : ℝ) (by norm_num : 0 < (2 : ℝ))
+  simp only [mul_zero, smul_eq_mul, laguerre_fourth_moment] at h
+  rw [h]
+  ring
+
+theorem momentPoly_pos_nat (n : ℕ) : 0 < momentPoly (n : ℝ) := by
+  unfold momentPoly
+  positivity
+
+theorem radialFock_strict (n : ℕ) (hn : 1 ≤ n) :
+    (∫ t in Ioi (0 : ℝ), |radialFock n t|) <
+      (2 : ℝ)^n * Real.Gamma ((n : ℝ)/2+1)^2 / (n.factorial : ℝ) := by
+  let c := 6*momentPoly (n : ℝ)/32
+  have hc : 0 < c := by dsimp [c]; have := momentPoly_pos_nat n; positivity
+  let a := Real.sqrt (Real.sqrt c)
+  have ha : 0 < a := Real.sqrt_pos.2 (Real.sqrt_pos.2 hc)
+  have hscale : a^4 = c := by
+    dsimp [a]
+    calc
+      _ = ((Real.sqrt (Real.sqrt c))^2)^2 := by ring
+      _ = c := by rw [Real.sq_sqrt (Real.sqrt_nonneg c), Real.sq_sqrt hc.le]
+  have h2 : IntegrableOn (fun t => radialFock n t^2) (Ioi (0 : ℝ)) := by
+    apply IntegrableOn.of_integral_ne_zero
+    rw [radialFock_norm]
+    norm_num
+  have h4 : IntegrableOn (fun t => t^4*radialFock n t^2) (Ioi (0 : ℝ)) := by
+    apply IntegrableOn.of_integral_ne_zero
+    rw [radialFock_fourth]
+    exact (div_pos (momentPoly_pos_nat n) (by norm_num)).ne'
+  have hf : IntegrableOn (fun t => |radialFock n t|) (Ioi (0 : ℝ)) := by
+    simpa [Real.norm_eq_abs] using (radialFock_integrable n).norm
+  exact radial_moment_comparison n (radialFock n) a hn ha hscale
+    hf h2 h4 (quarticWeight_integrable a ha) (radialFock_norm n)
+    (radialFock_fourth n) (quarticWeight_integral a ha)
+
+theorem radialFock_vacuum :
+    (∫ t in Ioi (0 : ℝ), |radialFock 0 t|) = 1 := by
+  have he : (fun t => |radialFock 0 t|) = (fun t => Real.exp (-t)*t^0) := by
+    funext t
+    simp [radialFock, laguerre, Finset.sum_range_succ, abs_of_pos (Real.exp_pos _)]
+  rw [he, exp_monomial_integral]
+  norm_num
+
+theorem radialFock_theorem (n : ℕ) :
+    (∫ t in Ioi (0 : ℝ), |radialFock n t|) ≤
+      (2 : ℝ)^n * Real.Gamma ((n : ℝ)/2+1)^2 / (n.factorial : ℝ) := by
+  by_cases hn : n = 0
+  · subst n
+    rw [radialFock_vacuum]
+    norm_num [Real.Gamma_one]
+  · exact (radialFock_strict n (by omega)).le
+
+#print axioms radialFock_norm
+#print axioms radialFock_fourth
+#print axioms radialFock_strict
+#print axioms radialFock_vacuum
+#print axioms radialFock_theorem
+
+end F19
