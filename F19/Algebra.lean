@@ -620,7 +620,7 @@ theorem exp_monomial_integrable (k : ℕ) :
   have h := integrableOn_rpow_mul_exp_neg_mul_rpow
     (p := (1 : ℝ)) (s := (k : ℝ)) (b := (1 : ℝ)) (by
       have hk : 0 ≤ (k : ℝ) := by positivity
-      linarith) one_pos one_pos
+      linarith) (by norm_num) one_pos
   simpa [Real.rpow_natCast, Real.rpow_one, mul_comm] using h
 
 theorem exp_monomial_integral (k : ℕ) :
