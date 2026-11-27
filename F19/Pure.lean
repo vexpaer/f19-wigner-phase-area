@@ -440,9 +440,6 @@ theorem finiteWigner_jet_identity (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
       apply Finset.sum_congr rfl
       intro m hm
       rw [Finset.mul_sum, Finset.mul_sum]
-      apply Finset.sum_congr rfl
-      intro n hn
-      ring
 
 /-- Real-valued alternating jet norm formula. -/
 noncomputable def jetAlternating (N : ℕ) (c : ℕ → ℂ) (z : ℂ) : ℝ :=
@@ -606,7 +603,8 @@ theorem chiGammaSq_lower (k : ℕ) :
   have h := F19.gammaRatio_lower (2*(k:ℝ)+1) (by positivity)
   unfold chiGammaSq
   convert h using 1
-  ring
+  have hk : (0:ℝ) ≤ k := Nat.cast_nonneg k
+  field_simp <;> ring
 
 theorem chiGammaSq_upper (k : ℕ) : chiGammaSq k ≤ (k:ℝ)+1 := by
   let t : ℝ := (k:ℝ)+1
@@ -632,9 +630,8 @@ theorem chiGammaSq_step (k : ℕ) :
     F19.gammaRatio_step _ (by positivity), mul_pow]
   congr 1
   congr 1
-  ring
-
-noncomputable def chiGammaNormalized (a : ℝ) (k : ℕ) : ℝ :=
+  have hk : (0:ℝ) ≤ k := Nat.cast_nonneg k
+  field_simp <;> ring (a : ℝ) (k : ℕ) : ℝ :=
   chiGammaSq k / ((k:ℝ)+1-a)
 
 theorem chiGammaNormalized_tendsto (a : ℝ) (ha : a < 1) :
@@ -652,22 +649,24 @@ theorem chiGammaNormalized_tendsto (a : ℝ) (ha : a < 1) :
       Tendsto _ atTop (𝓝 ((1:ℝ)-a*0)))
   have hl : Tendsto (fun k => (1:ℝ)/((1+(1/2:ℝ)*(t k)⁻¹)*(1-a*(t k)⁻¹)))
       atTop (𝓝 1) := by
-    simpa using tendsto_const_nhds.div (h1.mul h2) (by norm_num : (1:ℝ)*1 ≠ 0)
+    simpa only [one_mul, div_one, Pi.div_apply] using (tendsto_const_nhds (x := (1:ℝ)) (f := (atTop : Filter ℕ))).div (h1.mul h2) (by norm_num : (1:ℝ)*1 ≠ 0)
   have hu : Tendsto (fun k => (1:ℝ)/(1-a*(t k)⁻¹)) atTop (𝓝 1) := by
-    simpa using tendsto_const_nhds.div h2 one_ne_zero
+    simpa only [div_one, Pi.div_apply] using (tendsto_const_nhds (x := (1:ℝ)) (f := (atTop : Filter ℕ))).div h2 one_ne_zero
   apply tendsto_of_tendsto_of_tendsto_of_le_of_le hl hu
   · intro k
     have ht0 : 0 < t k := by dsimp [t]; positivity
     have hta : 0 < t k-a := by dsimp [t]; linarith [Nat.cast_nonneg (α := ℝ) k]
+    change (1:ℝ)/((1+(1/2:ℝ)*(t k)⁻¹)*(1-a*(t k)⁻¹)) ≤ chiGammaNormalized a k
     have he : (1:ℝ)/((1+(1/2:ℝ)*(t k)⁻¹)*(1-a*(t k)⁻¹)) =
         (t k)^2/(t k+1/2)/(t k-a) := by
-      field_simp [ht0.ne', hta.ne', show t k+1/2 ≠ 0 by linarith]
+      field_simp [ht0.ne', hta.ne', show t k+1/2 ≠ 0 by linarith only [ht0]]
       <;> ring
     rw [he]
     exact div_le_div_of_nonneg_right (chiGammaSq_lower k) hta.le
   · intro k
     have ht0 : 0 < t k := by dsimp [t]; positivity
     have hta : 0 < t k-a := by dsimp [t]; linarith [Nat.cast_nonneg (α := ℝ) k]
+    change chiGammaNormalized a k ≤ (1:ℝ)/(1-a*(t k)⁻¹)
     have he : (1:ℝ)/(1-a*(t k)⁻¹) = t k/(t k-a) := by
       field_simp [ht0.ne', hta.ne']
       <;> ring
@@ -678,7 +677,7 @@ theorem chiGammaNormalized_quarter_antitone : Antitone (chiGammaNormalized (1/4)
   apply antitone_nat_of_succ_le
   intro k
   let t : ℝ := (k:ℝ)+1
-  have ht : 1 ≤ t := by dsimp [t]; positivity
+  have ht : 1 ≤ t := by dsimp [t]; linarith [Nat.cast_nonneg (α := ℝ) k]
   have h0 : 0 < t := by linarith
   have h1 : 0 < t-1/4 := by linarith
   have h2 : 0 < t+1-1/4 := by linarith
@@ -700,7 +699,7 @@ theorem chiGammaNormalized_sixth_monotone : Monotone (chiGammaNormalized (1/6)) 
   apply monotone_nat_of_le_succ
   intro k
   let t : ℝ := (k:ℝ)+1
-  have ht : 1 ≤ t := by dsimp [t]; positivity
+  have ht : 1 ≤ t := by dsimp [t]; linarith [Nat.cast_nonneg (α := ℝ) k]
   have h0 : 0 < t := by linarith
   have h1 : 0 < t-1/6 := by linarith
   have h2 : 0 < t+1-1/6 := by linarith
