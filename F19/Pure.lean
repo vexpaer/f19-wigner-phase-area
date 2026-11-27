@@ -553,7 +553,7 @@ theorem qubit_negative_coeff_le (k : ℕ) (hk : 1 ≤ k) :
       (2:ℝ) = 2^1 := by norm_num
       _ ≤ 2^k := by exact pow_le_pow_right₀ (by norm_num) hk
   have hf : (1:ℝ) ≤ k.factorial := by
-    exact_mod_cast Nat.factorial_pos k
+    exact_mod_cast (Nat.succ_le_iff.mpr (Nat.factorial_pos k) : 1 ≤ k.factorial)
   have hpoly : 6*(k:ℝ) ≤ ((k:ℝ)+1)*((k:ℝ)+2) := by
     rcases eq_or_lt_of_le hk with h | h
     · subst k; norm_num
@@ -592,5 +592,159 @@ theorem qubit_deficit_algebra (mean second neg absMoment : ℝ)
 #print axioms qubit_negative_coeff_le
 #print axioms qubit_negative_coeff_variance
 #print axioms qubit_deficit_algebra
+
+end F19.Pure
+
+
+namespace F19.Pure
+
+noncomputable def chiGammaSq (k : ℕ) : ℝ :=
+  F19.gammaRatio (2*(k:ℝ)+1)^2
+
+theorem chiGammaSq_lower (k : ℕ) :
+    ((k:ℝ)+1)^2/((k:ℝ)+1+1/2) ≤ chiGammaSq k := by
+  have h := F19.gammaRatio_lower (2*(k:ℝ)+1) (by positivity)
+  unfold chiGammaSq
+  convert h using 1
+  ring
+
+theorem chiGammaSq_upper (k : ℕ) : chiGammaSq k ≤ (k:ℝ)+1 := by
+  let t : ℝ := (k:ℝ)+1
+  have ht : 0 < t := by dsimp [t]; positivity
+  have ht' : 0 < t-1/2 := by dsimp [t]; linarith [Nat.cast_nonneg (α := ℝ) k]
+  have h := F19.gamma_midpoint_sq (t-1/2) ht'
+  rw [show t-1/2+1 = t+1/2 by ring,
+    show t-1/2+1/2 = t by ring,
+    show t-1/2+3/2 = t+1 by ring, Real.Gamma_add_one ht.ne'] at h
+  have hg : 0 < Real.Gamma t := Real.Gamma_pos_of_pos ht
+  unfold chiGammaSq F19.gammaRatio
+  rw [show (2*(k:ℝ)+1+2)/2 = t+1/2 by dsimp [t]; ring,
+    show (2*(k:ℝ)+1+1)/2 = t by dsimp [t]; ring, div_pow]
+  apply (div_le_iff₀ (pow_pos hg 2)).2
+  change _ ≤ t * Real.Gamma t^2
+  nlinarith only [h]
+
+theorem chiGammaSq_step (k : ℕ) :
+    chiGammaSq (k+1) = (((k:ℝ)+1+1/2)/((k:ℝ)+1))^2 * chiGammaSq k := by
+  unfold chiGammaSq
+  push_cast
+  rw [show 2*((k:ℝ)+1)+1 = (2*(k:ℝ)+1)+2 by ring,
+    F19.gammaRatio_step _ (by positivity), mul_pow]
+  congr 1
+  congr 1
+  ring
+
+noncomputable def chiGammaNormalized (a : ℝ) (k : ℕ) : ℝ :=
+  chiGammaSq k / ((k:ℝ)+1-a)
+
+theorem chiGammaNormalized_tendsto (a : ℝ) (ha : a < 1) :
+    Tendsto (chiGammaNormalized a) atTop (𝓝 1) := by
+  let t : ℕ → ℝ := fun k => (k:ℝ)+1
+  have ht : Tendsto t atTop atTop :=
+    tendsto_atTop_add_const_right atTop (1:ℝ) tendsto_natCast_atTop_atTop
+  have hi : Tendsto (fun k => (t k)⁻¹) atTop (𝓝 0) :=
+    tendsto_inv_atTop_zero.comp ht
+  have h1 : Tendsto (fun k => 1+(1/2:ℝ)*(t k)⁻¹) atTop (𝓝 1) := by
+    simpa using (tendsto_const_nhds.add (hi.const_mul (1/2:ℝ)) :
+      Tendsto _ atTop (𝓝 ((1:ℝ)+(1/2:ℝ)*0)))
+  have h2 : Tendsto (fun k => 1-a*(t k)⁻¹) atTop (𝓝 1) := by
+    simpa using (tendsto_const_nhds.sub (hi.const_mul a) :
+      Tendsto _ atTop (𝓝 ((1:ℝ)-a*0)))
+  have hl : Tendsto (fun k => (1:ℝ)/((1+(1/2:ℝ)*(t k)⁻¹)*(1-a*(t k)⁻¹)))
+      atTop (𝓝 1) := by
+    simpa using tendsto_const_nhds.div (h1.mul h2) (by norm_num : (1:ℝ)*1 ≠ 0)
+  have hu : Tendsto (fun k => (1:ℝ)/(1-a*(t k)⁻¹)) atTop (𝓝 1) := by
+    simpa using tendsto_const_nhds.div h2 one_ne_zero
+  apply tendsto_of_tendsto_of_tendsto_of_le_of_le hl hu
+  · intro k
+    have ht0 : 0 < t k := by dsimp [t]; positivity
+    have hta : 0 < t k-a := by dsimp [t]; linarith [Nat.cast_nonneg (α := ℝ) k]
+    have he : (1:ℝ)/((1+(1/2:ℝ)*(t k)⁻¹)*(1-a*(t k)⁻¹)) =
+        (t k)^2/(t k+1/2)/(t k-a) := by
+      field_simp [ht0.ne', hta.ne', show t k+1/2 ≠ 0 by linarith]
+      <;> ring
+    rw [he]
+    exact div_le_div_of_nonneg_right (chiGammaSq_lower k) hta.le
+  · intro k
+    have ht0 : 0 < t k := by dsimp [t]; positivity
+    have hta : 0 < t k-a := by dsimp [t]; linarith [Nat.cast_nonneg (α := ℝ) k]
+    have he : (1:ℝ)/(1-a*(t k)⁻¹) = t k/(t k-a) := by
+      field_simp [ht0.ne', hta.ne']
+      <;> ring
+    rw [he]
+    exact div_le_div_of_nonneg_right (chiGammaSq_upper k) hta.le
+
+theorem chiGammaNormalized_quarter_antitone : Antitone (chiGammaNormalized (1/4)) := by
+  apply antitone_nat_of_succ_le
+  intro k
+  let t : ℝ := (k:ℝ)+1
+  have ht : 1 ≤ t := by dsimp [t]; positivity
+  have h0 : 0 < t := by linarith
+  have h1 : 0 < t-1/4 := by linarith
+  have h2 : 0 < t+1-1/4 := by linarith
+  unfold chiGammaNormalized
+  rw [chiGammaSq_step]
+  push_cast
+  change ((t+1/2)/t)^2*chiGammaSq k/(t+1-1/4) ≤ chiGammaSq k/(t-1/4)
+  have he : ((t+1/2)/t)^2*(t-1/4) ≤ t+1-1/4 := by
+    rw [div_pow, div_mul_eq_mul_div]
+    apply (div_le_iff₀ (pow_pos h0 2)).2
+    linarith [gamma_quarter_poly t]
+  apply (div_le_div_iff₀ h2 h1).2
+  calc
+    _ = (((t+1/2)/t)^2*(t-1/4))*chiGammaSq k := by ring
+    _ ≤ (t+1-1/4)*chiGammaSq k := mul_le_mul_of_nonneg_right he (sq_nonneg _)
+    _ = _ := by ring
+
+theorem chiGammaNormalized_sixth_monotone : Monotone (chiGammaNormalized (1/6)) := by
+  apply monotone_nat_of_le_succ
+  intro k
+  let t : ℝ := (k:ℝ)+1
+  have ht : 1 ≤ t := by dsimp [t]; positivity
+  have h0 : 0 < t := by linarith
+  have h1 : 0 < t-1/6 := by linarith
+  have h2 : 0 < t+1-1/6 := by linarith
+  unfold chiGammaNormalized
+  rw [chiGammaSq_step]
+  push_cast
+  change chiGammaSq k/(t-1/6) ≤ ((t+1/2)/t)^2*chiGammaSq k/(t+1-1/6)
+  have he : t+1-1/6 ≤ ((t+1/2)/t)^2*(t-1/6) := by
+    rw [div_pow, div_mul_eq_mul_div]
+    apply (le_div_iff₀ (pow_pos h0 2)).2
+    linarith [gamma_sixth_poly t ht]
+  apply (div_le_div_iff₀ h1 h2).2
+  calc
+    _ = (t+1-1/6)*chiGammaSq k := by ring
+    _ ≤ (((t+1/2)/t)^2*(t-1/6))*chiGammaSq k :=
+      mul_le_mul_of_nonneg_right he (sq_nonneg _)
+    _ = _ := by ring
+
+theorem chiGammaSq_quarter (k : ℕ) : (k:ℝ)+1-1/4 ≤ chiGammaSq k := by
+  have h : 1 ≤ chiGammaNormalized (1/4) k :=
+    le_of_tendsto (chiGammaNormalized_tendsto (1/4) (by norm_num))
+      ((eventually_ge_atTop k).mono fun n hn => chiGammaNormalized_quarter_antitone hn)
+  unfold chiGammaNormalized at h
+  have hp : 0 < (k:ℝ)+1-1/4 := by linarith [Nat.cast_nonneg (α := ℝ) k]
+  have h' := (le_div_iff₀ hp).1 h
+  linarith
+
+theorem chiGammaSq_sixth (k : ℕ) : chiGammaSq k ≤ (k:ℝ)+1-1/6 := by
+  have h : chiGammaNormalized (1/6) k ≤ 1 :=
+    ge_of_tendsto (chiGammaNormalized_tendsto (1/6) (by norm_num))
+      ((eventually_ge_atTop k).mono fun n hn => chiGammaNormalized_sixth_monotone hn)
+  unfold chiGammaNormalized at h
+  have hp : 0 < (k:ℝ)+1-1/6 := by linarith [Nat.cast_nonneg (α := ℝ) k]
+  have h' := (div_le_iff₀ hp).1 h
+  linarith
+
+theorem chi_variance_bounds (k : ℕ) :
+    1/3 ≤ 2*((k:ℝ)+1)-2*chiGammaSq k ∧
+      2*((k:ℝ)+1)-2*chiGammaSq k ≤ 1/2 := by
+  constructor <;> linarith [chiGammaSq_quarter k, chiGammaSq_sixth k]
+
+#print axioms chiGammaSq_lower
+#print axioms chiGammaSq_upper
+#print axioms chiGammaNormalized_tendsto
+#print axioms chi_variance_bounds
 
 end F19.Pure
