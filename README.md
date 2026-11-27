@@ -2,18 +2,13 @@
 
 Research candidate for the phase-invariant sector of C. N. Gagatsos, *Wigner negativity costs phase-space area: A conjectured refinement of the Lieb–Solovej inequality at Rényi order one half*, [arXiv:2611.30969](https://arxiv.org/abs/2611.30969), Conjecture 1.
 
-**Status:** verified analytic core, not a complete formalization of the phase-invariant conjecture. No claim of priority or full solution is made.
+**Status:** all-number-state radial inequality verified in Lean, with countable mixture and operator-to-phase-space identification still in progress. No claim of priority or full solution is made.
 
 ## Verified baseline
 
-[CI run 20](https://github.com/vexpaer/f19-wigner-phase-area/actions/runs/45986945290) successfully compiled commit `7d9192a544238a1a973b82c167c72095a55010ae` with Lean 4.19.0 and Mathlib v4.19.0. All 16 reported theorem dependencies are limited to `propext`, `Classical.choice`, and `Quot.sound`. The baseline includes:
-- algebraic fourth-moment certificates;
-- Gamma log-convexity, a finite-shift bound, duplication and factorial formulas;
-- Husimi Gamma integral;
-- Bochner integral Cauchy–Schwarz;
-- optimized fourth-moment bound.
+[CI run 50](https://github.com/vexpaer/f19-wigner-phase-area/actions/runs/45988414910) successfully compiled commit `610677c72cbfee85ae47e5db96943977bbf1f8d6` with Lean 4.19.0 and Mathlib v4.19.0. All reported theorem dependencies are limited to `propext`, `Classical.choice`, and `Quot.sound`. The theorem `F19.fock_radial_husimi_inequality` uses explicit radial Wigner and Husimi densities and holds for every natural number n. The vacuum and strict comparison for positive n are also verified.
 
-The [verification PR](https://github.com/vexpaer/f19-wigner-phase-area/pull/1) contains additional experimental code for the reciprocal quartic integral, explicit Laguerre orthogonality, exact fourth moment and radial Wigner/Husimi comparison. Its results are not certified until the respective build and axiom audit succeed.
+The [verification PR](https://github.com/vexpaer/f19-wigner-phase-area/pull/1) is developing a countable nonnegative mixture extension using extended-real integrals. This extension and the quantum-operator identification are not included in the verified baseline.
 
 ## Reproduce
 Run `lake update`, `lake exe cache get`, `lake build`, and `lake env lean F19/Algebra.lean`. Run `python -m pip install -r requirements.txt && python verify.py` for independent symbolic/numerical diagnostics.
