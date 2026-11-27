@@ -601,7 +601,7 @@ theorem signed_binomial_moment (n k : ℕ) :
         simp only [map_neg, map_one, map_natCast]
         ring
       _ = ((Polynomial.X : ℝ[X])+1)^k * (-((Polynomial.X : ℝ[X])+1)+1)^n := by
-        rw [add_pow]
+        rw [add_pow (-((Polynomial.X : ℝ[X])+1)) 1 n]
       _ = _ := by
         rw [show -((Polynomial.X : ℝ[X])+1)+1 = -Polynomial.X by ring,
           show -(Polynomial.X : ℝ[X]) = Polynomial.C (-1 : ℝ)*Polynomial.X by simp,
@@ -618,7 +618,7 @@ theorem signed_binomial_moment (n k : ℕ) :
 theorem exp_monomial_integrable (k : ℕ) :
     IntegrableOn (fun x : ℝ => Real.exp (-x)*x^k) (Ioi (0 : ℝ)) := by
   have h := integrableOn_rpow_mul_exp_neg_mul_rpow
-    (p := (1 : ℝ)) (s := (k : ℝ)) (b := (1 : ℝ)) (by positivity) one_pos one_pos
+    (p := (1 : ℝ)) (s := (k : ℝ)) (b := (1 : ℝ)) (by have hk : 0 ≤ (k : ℝ) := by positivity; linarith) one_pos one_pos
   simpa [Real.rpow_natCast, Real.rpow_one, mul_comm] using h
 
 theorem exp_monomial_integral (k : ℕ) :
