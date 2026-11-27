@@ -1,0 +1,19 @@
+name: Lean algebraic certificates
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  lean:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+      - name: Reject unfinished proofs and custom axioms
+        run: |
+          if grep -En '^[[:space:]]*(axiom|opaque)[[:space:]]|\b(sorry|admit)\b' F19.lean F19/*.lean; then
+            exit 1
+          fi
+          lake env lean F19/Algebra.lean
