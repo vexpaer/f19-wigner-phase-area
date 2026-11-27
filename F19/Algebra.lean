@@ -1103,7 +1103,7 @@ theorem enn_countable_cauchy (a b : ℕ → ℝ≥0∞) :
     Real.holderConjugate_iff.mpr (by norm_num)
   have ha : AEMeasurable a Measure.count := (measurable_of_countable a).aemeasurable
   have hb : AEMeasurable b Measure.count := (measurable_of_countable b).aemeasurable
-  have h := lintegral_mul_le_Lp_mul_Lq Measure.count hpq ha hb
+  have h := ENNReal.lintegral_mul_le_Lp_mul_Lq Measure.count hpq ha hb
   simpa only [Pi.mul_apply, ENNReal.rpow_two, lintegral_count] using h
 
 theorem enn_half_sq (x : ℝ≥0∞) : (x ^ (1/2 : ℝ))^2 = x := by
