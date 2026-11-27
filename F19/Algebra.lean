@@ -1305,3 +1305,86 @@ theorem diagonalHusimiRoot_formula (p : ℕ → ℝ) (t : ℝ) (ht : 0 ≤ t) :
 #print axioms diagonalHusimiRoot_formula
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+-- The paper uses the real quadrature coordinates, represented here by ℂ
+-- with its standard Lebesgue measure and t = |z|².
+theorem planar_radial_integral (g : ℝ → ℝ) :
+    (∫ z : ℂ, g (‖z‖^2)) = Real.pi * (∫ t in Ioi (0 : ℝ), g t) := by
+  calc
+    _ = ∫ x in Ioi (0 : ℝ) ×ˢ Ioo (-Real.pi) Real.pi,
+        x.1 * g (x.1^2) := by
+      rw [← Complex.integral_comp_polarCoord_symm, Complex.polarCoord_target]
+      simp_rw [Complex.norm_polarCoord_symm, smul_eq_mul, sq_abs]
+    _ = (∫ x in Ioi (0 : ℝ), x * g (x^2)) *
+          (∫ _ in Ioo (-Real.pi) Real.pi, (1 : ℝ)) := by
+      rw [← setIntegral_prod_mul, volume_eq_prod]
+      simp_rw [mul_one]
+    _ = 2 * Real.pi * (∫ x in Ioi (0 : ℝ), x * g (x^2)) := by
+      simp_rw [integral_const, measureReal_restrict_apply MeasurableSet.univ, Set.univ_inter,
+        volume_real_Ioo_of_le (a := -Real.pi) (b := Real.pi) (by linarith [Real.pi_nonneg]),
+        sub_neg_eq_add, smul_eq_mul, mul_one]
+      ring
+    _ = _ := by
+      have h := integral_comp_rpow_Ioi_of_pos (g := g) (p := (2 : ℝ)) (by norm_num)
+      simp only [show (2 : ℝ)-1 = 1 by norm_num, Real.rpow_one, Real.rpow_two,
+        smul_eq_mul, mul_assoc, integral_const_mul] at h
+      linarith [congrArg (fun x : ℝ => Real.pi*x) h]
+
+noncomputable def planarWigner (n : ℕ) (z : ℂ) : ℝ :=
+  radialWigner n (‖z‖^2) / Real.pi
+
+noncomputable def planarHusimiRoot (n : ℕ) (z : ℂ) : ℝ :=
+  radialHusimiRoot n (‖z‖^2) / Real.sqrt Real.pi
+
+theorem planarHusimiRoot_nonneg (n : ℕ) (z : ℂ) :
+    0 ≤ planarHusimiRoot n z :=
+  div_nonneg (radialHusimiRoot_nonneg n _ (sq_nonneg _)) (Real.sqrt_nonneg _)
+
+theorem planarWigner_abs_integral (n : ℕ) :
+    (∫ z : ℂ, |planarWigner n z|) = ∫ t in Ioi (0 : ℝ), |radialWigner n t| := by
+  unfold planarWigner
+  simp_rw [abs_div, abs_of_pos Real.pi_pos, div_eq_mul_inv]
+  rw [integral_mul_const, planar_radial_integral]
+  field_simp [Real.pi_ne_zero]
+
+theorem planarHusimiRoot_integral (n : ℕ) :
+    (∫ z : ℂ, planarHusimiRoot n z) =
+      Real.sqrt Real.pi * (∫ t in Ioi (0 : ℝ), radialHusimiRoot n t) := by
+  unfold planarHusimiRoot
+  simp_rw [div_eq_mul_inv]
+  rw [integral_mul_const, planar_radial_integral]
+  have h := Real.sq_sqrt Real.pi_nonneg
+  have hs := Real.sqrt_pos.2 Real.pi_pos
+  field_simp [hs.ne']
+  nlinarith only [h]
+
+theorem planarFock_inequality (n : ℕ) :
+    8 * Real.pi * (∫ z : ℂ, |planarWigner n z|) ≤
+      (∫ z : ℂ, planarHusimiRoot n z)^2 := by
+  rw [planarWigner_abs_integral, planarHusimiRoot_integral, mul_pow, Real.sq_sqrt Real.pi_nonneg]
+  have h := fock_radial_husimi_inequality n
+  have he : (∫ t in Ioi (0 : ℝ), Real.sqrt (radialHusimi n t)) =
+      ∫ t in Ioi (0 : ℝ), radialHusimiRoot n t := by
+    apply setIntegral_congr_fun measurableSet_Ioi
+    intro t ht
+    change Real.sqrt (radialHusimiRoot n t ^ 2) = radialHusimiRoot n t
+    rw [Real.sqrt_sq_eq_abs, abs_of_nonneg (radialHusimiRoot_nonneg n t ht.le)]
+  rw [he] at h
+  have h' : 8 * (∫ t in Ioi (0 : ℝ), |radialWigner n t|) ≤
+      (∫ t in Ioi (0 : ℝ), radialHusimiRoot n t)^2 := by linarith
+  calc
+    _ = Real.pi * (8 * (∫ t in Ioi (0 : ℝ), |radialWigner n t|)) := by ring
+    _ ≤ _ := mul_le_mul_of_nonneg_left h' Real.pi_nonneg
+
+#print axioms planar_radial_integral
+#print axioms planarWigner_abs_integral
+#print axioms planarHusimiRoot_integral
+#print axioms planarFock_inequality
+
+end F19
