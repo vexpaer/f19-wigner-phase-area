@@ -568,3 +568,123 @@ theorem quarticWeight_integral (a : ℝ) (ha : 0 < a) :
 #print axioms quarticWeight_integral
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set Polynomial
+open scoped BigOperators Polynomial
+
+noncomputable def laguerre (n : ℕ) (x : ℝ) : ℝ :=
+  ∑ j ∈ Finset.range (n+1), (-1 : ℝ)^j * (n.choose j : ℝ) / (j.factorial : ℝ) * x^j
+
+theorem signed_binomial_moment (n k : ℕ) :
+    (∑ j ∈ Finset.range (n+1), (-1 : ℝ)^j * (n.choose j : ℝ) *
+      ((k+j).choose k : ℝ)) = (-1 : ℝ)^n * (k.choose n : ℝ) := by
+  have ep : (∑ j ∈ Finset.range (n+1),
+      Polynomial.C ((-1 : ℝ)^j * (n.choose j : ℝ)) *
+        ((Polynomial.X : ℝ[X])+1)^(k+j)) =
+      Polynomial.C ((-1 : ℝ)^n) *
+        ((Polynomial.X : ℝ[X])^n * (Polynomial.X+1)^k) := by
+    calc
+      _ = ((Polynomial.X : ℝ[X])+1)^k *
+          (∑ j ∈ Finset.range (n+1),
+            (-((Polynomial.X : ℝ[X])+1))^j * (1 : ℝ[X])^(n-j) *
+              (n.choose j : ℝ[X])) := by
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro j hj
+        rw [show -((Polynomial.X : ℝ[X])+1) =
+            Polynomial.C (-1 : ℝ)*(Polynomial.X+1) by simp]
+        rw [mul_pow, pow_add, one_pow, mul_one, map_mul, map_pow]
+        simp only [map_neg, map_one, map_natCast]
+        ring
+      _ = ((Polynomial.X : ℝ[X])+1)^k * (-((Polynomial.X : ℝ[X])+1)+1)^n := by
+        rw [add_pow]
+      _ = _ := by
+        rw [show -((Polynomial.X : ℝ[X])+1)+1 = -Polynomial.X by ring,
+          show -(Polynomial.X : ℝ[X]) = Polynomial.C (-1 : ℝ)*Polynomial.X by simp,
+          mul_pow, map_pow]
+        ring
+  have hc := congrArg (fun p : ℝ[X] => p.coeff k) ep
+  simp only [Polynomial.finset_sum_coeff, Polynomial.coeff_C_mul,
+    Polynomial.coeff_X_add_one_pow, Polynomial.coeff_X_pow_mul'] at hc
+  rw [hc]
+  by_cases h : n ≤ k
+  · simp [h, Nat.choose_symm h]
+  · simp [h, Nat.choose_eq_zero_of_lt (Nat.lt_of_not_ge h)]
+
+theorem exp_monomial_integrable (k : ℕ) :
+    IntegrableOn (fun x : ℝ => Real.exp (-x)*x^k) (Ioi (0 : ℝ)) := by
+  have h := integrableOn_rpow_mul_exp_neg_mul_rpow
+    (p := (1 : ℝ)) (s := (k : ℝ)) (b := (1 : ℝ)) (by positivity) one_pos one_pos
+  simpa [Real.rpow_natCast, Real.rpow_one, mul_comm] using h
+
+theorem exp_monomial_integral (k : ℕ) :
+    (∫ x in Ioi (0 : ℝ), Real.exp (-x)*x^k) = (k.factorial : ℝ) := by
+  have h := Real.Gamma_eq_integral (show 0 < (k : ℝ)+1 by positivity)
+  rw [Real.Gamma_nat_eq_factorial] at h
+  simpa [Real.rpow_natCast] using h.symm
+
+theorem laguerre_monomial_integrable (n k : ℕ) :
+    IntegrableOn (fun x : ℝ => Real.exp (-x)*x^k*laguerre n x) (Ioi (0 : ℝ)) := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  have he : (fun x : ℝ => Real.exp (-x)*x^k*laguerre n x) =
+      (fun x => ∑ j ∈ Finset.range (n+1),
+        ((-1 : ℝ)^j*(n.choose j : ℝ)/(j.factorial : ℝ)) *
+          (Real.exp (-x)*x^(k+j))) := by
+    funext x
+    unfold laguerre
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro j hj
+    rw [pow_add]
+    ring
+  rw [he]
+  change Integrable _ μ
+  exact integrable_finset_sum _ (fun j _ => (exp_monomial_integrable (k+j)).const_mul _)
+
+theorem laguerre_monomial_integral (n k : ℕ) :
+    (∫ x in Ioi (0 : ℝ), Real.exp (-x)*x^k*laguerre n x) =
+      (-1 : ℝ)^n * (k.factorial : ℝ) * (k.choose n : ℝ) := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  have he : (fun x : ℝ => Real.exp (-x)*x^k*laguerre n x) =
+      (fun x => ∑ j ∈ Finset.range (n+1),
+        ((-1 : ℝ)^j*(n.choose j : ℝ)/(j.factorial : ℝ)) *
+          (Real.exp (-x)*x^(k+j))) := by
+    funext x
+    unfold laguerre
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro j hj
+    rw [pow_add]
+    ring
+  change (∫ x, Real.exp (-x)*x^k*laguerre n x ∂μ) = _
+  rw [he, integral_finset_sum]
+  · simp_rw [integral_const_mul]
+    change (∑ j ∈ Finset.range (n+1),
+      (-1 : ℝ)^j*(n.choose j : ℝ)/(j.factorial : ℝ) *
+        (∫ x in Ioi (0 : ℝ), Real.exp (-x)*x^(k+j))) = _
+    simp_rw [exp_monomial_integral]
+    calc
+      _ = (k.factorial : ℝ) * (∑ j ∈ Finset.range (n+1),
+          (-1 : ℝ)^j * (n.choose j : ℝ) * ((k+j).choose k : ℝ)) := by
+        rw [Finset.mul_sum]
+        apply Finset.sum_congr rfl
+        intro j hj
+        rw [Nat.cast_add_choose ℝ]
+        have hf : (k.factorial : ℝ) ≠ 0 := by exact_mod_cast Nat.factorial_ne_zero k
+        have hg : (j.factorial : ℝ) ≠ 0 := by exact_mod_cast Nat.factorial_ne_zero j
+        field_simp [hf,hg]
+        <;> ring
+      _ = _ := by rw [signed_binomial_moment]; ring
+  · intro j hj
+    exact (exp_monomial_integrable (k+j)).const_mul _
+
+#print axioms signed_binomial_moment
+#print axioms exp_monomial_integrable
+#print axioms exp_monomial_integral
+#print axioms laguerre_monomial_integrable
+#print axioms laguerre_monomial_integral
+
+end F19
