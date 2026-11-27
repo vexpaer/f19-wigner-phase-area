@@ -996,3 +996,95 @@ theorem radialFock_theorem (n : ℕ) :
 #print axioms radialFock_theorem
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+
+noncomputable def radialWigner (n : ℕ) (t : ℝ) : ℝ :=
+  (-1 : ℝ)^n * radialFock n t
+
+noncomputable def radialHusimiRoot (n : ℕ) (t : ℝ) : ℝ :=
+  ((2 : ℝ)^((n : ℝ)/2)/(Real.sqrt 2*Real.sqrt (n.factorial : ℝ))) *
+    (Real.exp (-((1/4 : ℝ)*t))*(((1/4 : ℝ)*t)^((n : ℝ)/2)))
+
+noncomputable def radialHusimi (n : ℕ) (t : ℝ) : ℝ :=
+  radialHusimiRoot n t ^ 2
+
+theorem rpow_half_nat_sq (x : ℝ) (hx : 0 ≤ x) (n : ℕ) :
+    (x^((n : ℝ)/2))^2 = x^n := by
+  rw [← Real.rpow_natCast (x^((n : ℝ)/2)) 2,
+    ← Real.rpow_mul hx, show (n : ℝ)/2*(↑(2 : ℕ) : ℝ) = (n : ℝ) by norm_num,
+    Real.rpow_natCast]
+
+theorem radialHusimi_density_formula (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
+    radialHusimi n t =
+      (1/2 : ℝ)*Real.exp (-t/2)*(t/2)^n/(n.factorial : ℝ) := by
+  have hfac : 0 < (n.factorial : ℝ) := by positivity
+  unfold radialHusimi radialHusimiRoot
+  rw [mul_pow, div_pow, mul_pow, rpow_half_nat_sq 2 (by norm_num),
+    Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2), Real.sq_sqrt hfac.le,
+    mul_pow, rpow_half_nat_sq _ (by positivity),
+    pow_two (Real.exp (-((1/4 : ℝ)*t))), ← Real.exp_add,
+    show -((1/4 : ℝ)*t) + -((1/4 : ℝ)*t) = -t/2 by ring]
+  have hpow : (2 : ℝ)^n * ((1/4 : ℝ)*t)^n = (t/2)^n := by
+    rw [← mul_pow]
+    congr 1
+    ring
+  calc
+    _ = Real.exp (-t/2)*((2 : ℝ)^n*((1/4 : ℝ)*t)^n)/(2*(n.factorial : ℝ)) := by
+      field_simp [hfac.ne']
+      <;> ring
+    _ = _ := by rw [hpow]; ring
+
+theorem radialHusimiRoot_nonneg (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
+    0 ≤ radialHusimiRoot n t := by
+  unfold radialHusimiRoot
+  positivity
+
+theorem radialHusimiRoot_integral (n : ℕ) :
+    (∫ t in Ioi (0 : ℝ), radialHusimiRoot n t) =
+      ((2 : ℝ)^((n : ℝ)/2)/(Real.sqrt 2*Real.sqrt (n.factorial : ℝ))) *
+        (4*Real.Gamma ((n : ℝ)/2+1)) := by
+  unfold radialHusimiRoot
+  rw [integral_const_mul]
+  have h := integral_comp_mul_left_Ioi
+    (fun x : ℝ => Real.exp (-x)*x^((n : ℝ)/2))
+    (0 : ℝ) (by norm_num : 0 < (1/4 : ℝ))
+  simp only [mul_zero, smul_eq_mul, husimi_gamma_integral] at h
+  rw [h]
+  norm_num
+
+theorem radialHusimi_rhs (n : ℕ) :
+    (∫ t in Ioi (0 : ℝ), Real.sqrt (radialHusimi n t))^2 / 8 =
+      (2 : ℝ)^n * Real.Gamma ((n : ℝ)/2+1)^2/(n.factorial : ℝ) := by
+  have hfac : 0 < (n.factorial : ℝ) := by positivity
+  have he : (∫ t in Ioi (0 : ℝ), Real.sqrt (radialHusimi n t)) =
+      ∫ t in Ioi (0 : ℝ), radialHusimiRoot n t := by
+    apply setIntegral_congr_fun measurableSet_Ioi
+    intro t ht
+    unfold radialHusimi
+    rw [Real.sqrt_sq_eq_abs, abs_of_nonneg (radialHusimiRoot_nonneg n t ht.le)]
+  rw [he, radialHusimiRoot_integral, mul_pow, div_pow, mul_pow,
+    rpow_half_nat_sq 2 (by norm_num),
+    Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2), Real.sq_sqrt hfac.le]
+  ring
+
+theorem radialWigner_abs (n : ℕ) (t : ℝ) :
+    |radialWigner n t| = |radialFock n t| := by
+  simp [radialWigner, abs_mul, abs_pow]
+
+theorem fock_radial_husimi_inequality (n : ℕ) :
+    (∫ t in Ioi (0 : ℝ), |radialWigner n t|) ≤
+      (∫ t in Ioi (0 : ℝ), Real.sqrt (radialHusimi n t))^2 / 8 := by
+  simp_rw [radialWigner_abs]
+  rw [radialHusimi_rhs]
+  exact radialFock_theorem n
+
+#print axioms radialHusimi_density_formula
+#print axioms radialHusimiRoot_integral
+#print axioms radialHusimi_rhs
+#print axioms fock_radial_husimi_inequality
+
+end F19
