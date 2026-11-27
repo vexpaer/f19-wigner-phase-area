@@ -463,9 +463,9 @@ theorem quarticPrimitive_deriv (x : ℝ) :
   have hq : 0 < (x-1)^2+1 := by positivity
   have hd : 0 < x^4+4 := by positivity
   have h1 : HasDerivAt (fun y : ℝ => (y+1)^2+1) (2*(x+1)) x := by
-    convert (((hasDerivAt_id x).add_const 1).pow 2).add_const 1 using 1 <;> ring
+    convert (((hasDerivAt_id x).add_const 1).pow 2).add_const 1 using 1 <;> simp only [id_eq] <;> ring
   have h2 : HasDerivAt (fun y : ℝ => (y-1)^2+1) (2*(x-1)) x := by
-    convert (((hasDerivAt_id x).sub_const 1).pow 2).add_const 1 using 1 <;> ring
+    convert (((hasDerivAt_id x).sub_const 1).pow 2).add_const 1 using 1 <;> simp only [id_eq] <;> ring
   have h3 : HasDerivAt (fun y : ℝ => Real.arctan (y+1)) (1/(1+(x+1)^2)) x := by
     simpa using (Real.hasDerivAt_arctan (x+1)).comp x ((hasDerivAt_id x).add_const 1)
   have h4 : HasDerivAt (fun y : ℝ => Real.arctan (y-1)) (1/(1+(x-1)^2)) x := by
@@ -485,10 +485,11 @@ theorem quarticPrimitive_zero : quarticPrimitive 0 = 0 := by
 theorem quarticPrimitive_limit :
     Tendsto quarticPrimitive atTop (𝓝 (Real.pi/2)) := by
   have hi : Tendsto (fun x : ℝ => x⁻¹) atTop (𝓝 0) := tendsto_inv_atTop_zero
+  have hone : Tendsto (fun _ : ℝ => (1 : ℝ)) atTop (𝓝 1) := tendsto_const_nhds
   have hp : Tendsto (fun x : ℝ => (1+x⁻¹)^2+x⁻¹^2) atTop (𝓝 1) := by
-    simpa using ((tendsto_const_nhds.add hi).pow 2).add (hi.pow 2)
+    simpa using ((hone.add hi).pow 2).add (hi.pow 2)
   have hq : Tendsto (fun x : ℝ => (1-x⁻¹)^2+x⁻¹^2) atTop (𝓝 1) := by
-    simpa using ((tendsto_const_nhds.sub hi).pow 2).add (hi.pow 2)
+    simpa using ((hone.sub hi).pow 2).add (hi.pow 2)
   have hratio : Tendsto (fun x : ℝ => ((x+1)^2+1)/((x-1)^2+1)) atTop (𝓝 1) := by
     have h := hp.div hq one_ne_zero
     simp only [div_one] at h
