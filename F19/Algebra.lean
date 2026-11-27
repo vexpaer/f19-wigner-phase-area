@@ -618,7 +618,9 @@ theorem signed_binomial_moment (n k : ℕ) :
 theorem exp_monomial_integrable (k : ℕ) :
     IntegrableOn (fun x : ℝ => Real.exp (-x)*x^k) (Ioi (0 : ℝ)) := by
   have h := integrableOn_rpow_mul_exp_neg_mul_rpow
-    (p := (1 : ℝ)) (s := (k : ℝ)) (b := (1 : ℝ)) (by have hk : 0 ≤ (k : ℝ) := by positivity; linarith) one_pos one_pos
+    (p := (1 : ℝ)) (s := (k : ℝ)) (b := (1 : ℝ)) (by
+      have hk : 0 ≤ (k : ℝ) := by positivity
+      linarith) one_pos one_pos
   simpa [Real.rpow_natCast, Real.rpow_one, mul_comm] using h
 
 theorem exp_monomial_integral (k : ℕ) :
@@ -754,7 +756,9 @@ theorem laguerre_norm_integral (n : ℕ) :
       norm_num
     calc
       (-1 : ℝ)^n / (n.factorial : ℝ) * ((-1 : ℝ)^n * (n.factorial : ℝ)) =
-          (-1 : ℝ)^n * (-1 : ℝ)^n := by field_simp [hf]
+          (-1 : ℝ)^n * (-1 : ℝ)^n := by
+        field_simp [hf]
+        <;> ring
       _ = 1 := hpow
   · intro j hj hjn
     have hj' : j < n := by have := Finset.mem_range.mp hj; omega
@@ -822,7 +826,7 @@ theorem fourth_moment_term (m i : ℕ) (hi : i < 5) :
   rw [Nat.cast_choose ℝ (show 4-i ≤ m+4 by omega),
     Nat.cast_choose ℝ (show i ≤ m+i+4 by omega),
     show m+4-(4-i)=m+i by omega, show m+i+4-i=m+4 by omega,
-    factorial_add_four]
+    factorial_add_four (m+i)]
   have hsign : (-1 : ℝ)^(m+i)*(-1 : ℝ)^(m+4) = (-1 : ℝ)^i := by
     rw [pow_add, pow_add]
     norm_num
