@@ -416,7 +416,7 @@ theorem finiteWigner_jet_identity (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
       intro m hm
       apply Finset.sum_congr rfl
       intro n hn
-      rw [crossFockKernel_range N m n (by simpa [S] using hm) (by simpa [S] using hn),
+      rw [crossFockKernel_range N m n (by simpa [S, Finset.mem_range] using hm) (by simpa [S, Finset.mem_range] using hn),
         Finset.mul_sum]
       apply Finset.sum_congr rfl
       intro k hk
@@ -453,7 +453,7 @@ theorem finiteWigner_jet_real (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
   apply Finset.sum_congr rfl
   intro k hk
   congr 1
-  rw [Complex.star_def, Complex.mul_conj, Complex.sq_norm]
+  rw [Complex.star_def, Complex.mul_conj']
 
 #print axioms crossFockKernel_range
 #print axioms jet_cross_term
