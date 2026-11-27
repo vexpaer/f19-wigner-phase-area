@@ -688,3 +688,107 @@ theorem laguerre_monomial_integral (n k : ℕ) :
 #print axioms laguerre_monomial_integral
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped BigOperators
+
+theorem laguerre_product_integrable (n m k : ℕ) :
+    IntegrableOn (fun x : ℝ => Real.exp (-x)*x^k*laguerre n x*laguerre m x)
+      (Ioi (0 : ℝ)) := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  have he : (fun x : ℝ => Real.exp (-x)*x^k*laguerre n x*laguerre m x) =
+      (fun x => ∑ j ∈ Finset.range (m+1),
+        ((-1 : ℝ)^j*(m.choose j : ℝ)/(j.factorial : ℝ)) *
+          (Real.exp (-x)*x^(k+j)*laguerre n x)) := by
+    funext x
+    change _ * (∑ j ∈ Finset.range (m+1), (-1 : ℝ)^j * (m.choose j : ℝ) / (j.factorial : ℝ) * x^j) = _
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro j hj
+    rw [pow_add]
+    ring
+  rw [he]
+  change Integrable _ μ
+  exact integrable_finset_sum _ (fun j _ => (laguerre_monomial_integrable n (k+j)).const_mul _)
+
+theorem laguerre_product_integral (n m k : ℕ) :
+    (∫ x in Ioi (0 : ℝ), Real.exp (-x)*x^k*laguerre n x*laguerre m x) =
+      ∑ j ∈ Finset.range (m+1),
+        ((-1 : ℝ)^j*(m.choose j : ℝ)/(j.factorial : ℝ)) *
+          ((-1 : ℝ)^n*((k+j).factorial : ℝ)*((k+j).choose n : ℝ)) := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  have he : (fun x : ℝ => Real.exp (-x)*x^k*laguerre n x*laguerre m x) =
+      (fun x => ∑ j ∈ Finset.range (m+1),
+        ((-1 : ℝ)^j*(m.choose j : ℝ)/(j.factorial : ℝ)) *
+          (Real.exp (-x)*x^(k+j)*laguerre n x)) := by
+    funext x
+    change _ * (∑ j ∈ Finset.range (m+1), (-1 : ℝ)^j * (m.choose j : ℝ) / (j.factorial : ℝ) * x^j) = _
+    rw [Finset.mul_sum]
+    apply Finset.sum_congr rfl
+    intro j hj
+    rw [pow_add]
+    ring
+  change (∫ x, Real.exp (-x)*x^k*laguerre n x*laguerre m x ∂μ) = _
+  rw [he, integral_finset_sum]
+  · simp_rw [integral_const_mul]
+    change (∑ j ∈ Finset.range (m+1),
+      ((-1 : ℝ)^j*(m.choose j : ℝ)/(j.factorial : ℝ)) *
+        (∫ x in Ioi (0 : ℝ), Real.exp (-x)*x^(k+j)*laguerre n x)) = _
+    simp_rw [laguerre_monomial_integral]
+  · intro j hj
+    exact (laguerre_monomial_integrable n (k+j)).const_mul _
+
+theorem laguerre_norm_integral (n : ℕ) :
+    (∫ x in Ioi (0 : ℝ), Real.exp (-x)*laguerre n x*laguerre n x) = 1 := by
+  have h := laguerre_product_integral n n 0
+  simp only [pow_zero, mul_one, zero_add] at h
+  rw [h, Finset.sum_eq_single n]
+  · simp only [Nat.choose_self, Nat.cast_one, mul_one]
+    have hf : (n.factorial : ℝ) ≠ 0 := by exact_mod_cast Nat.factorial_ne_zero n
+    have hpow : (-1 : ℝ)^n * (-1 : ℝ)^n = 1 := by
+      rw [← mul_pow]
+      norm_num
+    calc
+      (-1 : ℝ)^n / (n.factorial : ℝ) * ((-1 : ℝ)^n * (n.factorial : ℝ)) =
+          (-1 : ℝ)^n * (-1 : ℝ)^n := by field_simp [hf]
+      _ = 1 := hpow
+  · intro j hj hjn
+    have hj' : j < n := by have := Finset.mem_range.mp hj; omega
+    simp [Nat.choose_eq_zero_of_lt hj']
+  · simp
+
+theorem laguerre_orthogonal_of_lt (n m : ℕ) (hm : m < n) :
+    (∫ x in Ioi (0 : ℝ), Real.exp (-x)*laguerre n x*laguerre m x) = 0 := by
+  have h := laguerre_product_integral n m 0
+  simp only [pow_zero, mul_one, zero_add] at h
+  rw [h]
+  apply Finset.sum_eq_zero
+  intro j hj
+  have hj' : j < n := by have := Finset.mem_range.mp hj; omega
+  simp [Nat.choose_eq_zero_of_lt hj']
+
+theorem laguerre_orthogonality (n m : ℕ) :
+    (∫ x in Ioi (0 : ℝ), Real.exp (-x)*laguerre n x*laguerre m x) =
+      if n = m then 1 else 0 := by
+  by_cases h : n = m
+  · subst m
+    simp [laguerre_norm_integral]
+  · rw [if_neg h]
+    rcases lt_or_gt_of_ne h with hlt | hgt
+    · have he : (fun x : ℝ => Real.exp (-x)*laguerre n x*laguerre m x) =
+          (fun x => Real.exp (-x)*laguerre m x*laguerre n x) := by
+        funext x
+        ring
+      rw [he]
+      exact laguerre_orthogonal_of_lt m n hlt
+    · exact laguerre_orthogonal_of_lt n m hgt
+
+#print axioms laguerre_product_integrable
+#print axioms laguerre_product_integral
+#print axioms laguerre_norm_integral
+#print axioms laguerre_orthogonality
+
+end F19
