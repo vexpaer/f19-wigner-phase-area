@@ -251,7 +251,8 @@ theorem crossFockKernel_conj (m n : ℕ) (z : ℂ) :
     star (crossFockKernel m n z) = crossFockKernel n m z := by
   unfold crossFockKernel
   rw [min_comm m n]
-  simp only [map_sum, map_mul, map_pow, Complex.conj_ofReal, star_star]
+  simp only [star_sum, star_mul', star_pow, star_star, Complex.star_def, Complex.conj_ofReal]
+  simp only [← Complex.star_def, star_star]
   apply Finset.sum_congr rfl
   intro k hk
   have he : ((-1 : ℝ)^k * (m.choose k : ℝ) * (n.choose k : ℝ) *
@@ -273,7 +274,7 @@ noncomputable def finiteWignerPolynomial (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
 theorem finiteWignerPolynomial_real (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
     star (finiteWignerPolynomial N c z) = finiteWignerPolynomial N c z := by
   unfold finiteWignerPolynomial
-  simp only [map_sum, map_mul, star_star, crossFockKernel_conj]
+  simp only [star_sum, star_mul', star_star, crossFockKernel_conj]
   rw [Finset.sum_comm]
   apply Finset.sum_congr rfl
   intro m hm
