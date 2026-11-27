@@ -1635,3 +1635,107 @@ theorem diagonal_series_abs_summable_ae (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n
 #print axioms diagonal_series_abs_summable_ae
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+theorem radialFock_enn_strict (n : ℕ) (hn : 1 ≤ n) :
+    8 * (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal |radialWigner n t|) <
+      (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal (radialHusimiRoot n t))^2 := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  have hW : Integrable (fun t => |radialWigner n t|) μ := by
+    simp_rw [radialWigner_abs]
+    simpa only [Real.norm_eq_abs] using (radialFock_integrable n).norm
+  have hQ : Integrable (radialHusimiRoot n) μ := radialRoot_integrable n
+  have hQpos : 0 ≤ᵐ[μ] radialHusimiRoot n := by
+    filter_upwards [ae_restrict_mem (μ := volume) measurableSet_Ioi] with t ht
+    exact radialHusimiRoot_nonneg n t ht.le
+  have hWpos : 0 ≤ᵐ[μ] (fun t => |radialWigner n t|) :=
+    Filter.Eventually.of_forall (fun t => abs_nonneg _)
+  have h := radialFock_strict n hn
+  rw [← radialHusimi_rhs] at h
+  simp_rw [← radialWigner_abs n] at h
+  have he : (∫ t in Ioi (0 : ℝ), Real.sqrt (radialHusimi n t)) =
+      ∫ t in Ioi (0 : ℝ), radialHusimiRoot n t := by
+    apply setIntegral_congr_fun measurableSet_Ioi
+    intro t ht
+    change Real.sqrt (radialHusimiRoot n t ^ 2) = radialHusimiRoot n t
+    rw [Real.sqrt_sq_eq_abs, abs_of_nonneg (radialHusimiRoot_nonneg n t ht.le)]
+  rw [he] at h
+  have hr : 8 * (∫ t, |radialWigner n t| ∂μ) <
+      (∫ t, radialHusimiRoot n t ∂μ)^2 := by
+    change (∫ t, |radialWigner n t| ∂μ) < (∫ t, radialHusimiRoot n t ∂μ)^2 / 8 at h
+    linarith
+  have hnn := integral_nonneg_of_ae hQpos
+  have hWnn := integral_nonneg_of_ae hWpos
+  have hrpos : 0 < (∫ t, radialHusimiRoot n t ∂μ)^2 := by linarith
+  have h' := (ENNReal.ofReal_lt_ofReal_iff hrpos).2 hr
+  rw [ENNReal.ofReal_mul (by norm_num : (0 : ℝ) ≤ 8),
+    ENNReal.ofReal_pow hnn, ofReal_integral_eq_lintegral_ofReal hW hWpos,
+    ofReal_integral_eq_lintegral_ofReal hQ hQpos] at h'
+  norm_num at h'
+  exact h'
+
+
+theorem diagonal_radial_strict (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n)
+    (n : ℕ) (hn : 1 ≤ n) (hpn : 0 < p n)
+    (hfinite : (∫⁻ t in Ioi (0 : ℝ), diagonalHusimiRoot p t) ≠ ⊤) :
+    8 * (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal |diagonalWigner p t|) <
+      (∫⁻ t in Ioi (0 : ℝ), diagonalHusimiRoot p t)^2 := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  let q : ℕ → ℝ≥0∞ := fun k => ENNReal.ofReal (p k)
+  let f : ℕ → ℝ → ℝ≥0∞ := fun k t => ENNReal.ofReal (radialHusimiRoot k t)
+  let w : ℕ → ℝ → ℝ≥0∞ := fun k t => ENNReal.ofReal |radialWigner k t|
+  let A : ℕ → ℝ≥0∞ := fun k => q k * (8 * (∫⁻ t, w k t ∂μ))
+  let B : ℕ → ℝ≥0∞ := fun k => q k * (∫⁻ t, f k t ∂μ)^2
+  have hf : ∀ k, Measurable (f k) := by
+    intro k
+    dsimp [f, radialHusimiRoot]
+    fun_prop
+  have hw : ∀ k, Measurable (w k) := by
+    intro k
+    dsimp [w, radialWigner, radialFock, laguerre]
+    fun_prop
+  have htriangle (t : ℝ) :
+      ENNReal.ofReal |diagonalWigner p t| ≤ ∑' k, q k * w k t := by
+    unfold diagonalWigner
+    have h := enn_abs_tsum_le (fun k => p k * radialWigner k t)
+    simp_rw [abs_mul, abs_of_nonneg (hp _), ENNReal.ofReal_mul (hp _)] at h
+    exact h
+  have hsum : (∫⁻ t, ∑' k, q k * w k t ∂μ) =
+      ∑' k, q k * (∫⁻ t, w k t ∂μ) := by
+    rw [lintegral_tsum (fun k => (measurable_const.mul (hw k)).aemeasurable)]
+    apply tsum_congr
+    intro k
+    exact lintegral_const_mul _ (hw k)
+  have hle (k : ℕ) : A k ≤ B k :=
+    mul_le_mul_left' (radialFock_enn_component k) _
+  have hlt : A n < B n := by
+    apply ENNReal.mul_lt_mul_left' (by dsimp [q]; simp [hpn]) ENNReal.ofReal_ne_top
+    exact radialFock_enn_strict n hn
+  have hB : (∑' k, B k) ≤ (∫⁻ t, mixtureRoot q f t ∂μ)^2 :=
+    countable_mixture_root_bound μ q f hf
+  have hAf : (∑' k, A k) ≠ ⊤ :=
+    ne_top_of_le_ne_top (ENNReal.pow_ne_top hfinite)
+      (le_trans (ENNReal.tsum_le_tsum hle) hB)
+  change 8 * (∫⁻ t, ENNReal.ofReal |diagonalWigner p t| ∂μ) <
+    (∫⁻ t, mixtureRoot q f t ∂μ)^2
+  calc
+    _ ≤ 8 * (∫⁻ t, ∑' k, q k * w k t ∂μ) :=
+      mul_le_mul_left' (lintegral_mono htriangle) _
+    _ = ∑' k, A k := by
+      rw [hsum, ← ENNReal.tsum_mul_left]
+      apply tsum_congr
+      intro k
+      dsimp [A]
+      ac_rfl
+    _ < ∑' k, B k := ENNReal.tsum_lt_tsum hAf hle hlt
+    _ ≤ _ := hB
+
+#print axioms radialFock_enn_strict
+#print axioms diagonal_radial_strict
+
+end F19
