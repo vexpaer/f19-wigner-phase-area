@@ -963,3 +963,62 @@ theorem poincare_limit (r : ℝ) (p : ℕ → ℝ) (f : ℕ → ℝ)
 #print axioms poincare_limit
 
 end F19.Pure
+
+
+namespace F19.Pure
+
+noncomputable def binWeight (p : ℝ) (n k : ℕ) : ℝ :=
+  (n.choose k : ℝ) * p^k * (1-p)^(n-k)
+
+theorem binWeight_zero (p : ℝ) (n : ℕ) : binWeight p n 0 = (1-p)^n := by
+  simp [binWeight]
+
+theorem binWeight_outside (p : ℝ) (n k : ℕ) (h : n < k) :
+    binWeight p n k = 0 := by
+  simp [binWeight, Nat.choose_eq_zero_of_lt h]
+
+theorem binWeight_step (p : ℝ) (n k : ℕ) (hk : k ≤ n) :
+    binWeight p (n+1) (k+1) =
+      (1-p)*binWeight p n (k+1)+p*binWeight p n k := by
+  rcases eq_or_lt_of_le hk with he | hlt
+  · subst k
+    rw [binWeight_outside p n (n+1) (by omega)]
+    simp [binWeight, pow_succ]
+    <;> ring
+  · have hd : n-k = n-(k+1)+1 := by omega
+    unfold binWeight
+    rw [Nat.choose_succ_succ', Nat.cast_add, show n+1-(k+1) = n-k by omega]
+    rw [pow_succ p k, hd, pow_succ (1-p) (n-(k+1))]
+    ring
+
+theorem bernMean_binomial (p : ℝ) (n : ℕ) (f : ℕ → ℝ) :
+    bernMean p n f = ∑ k ∈ Finset.range (n+1), binWeight p n k * f k := by
+  induction n generalizing f with
+  | zero => simp [bernMean, binWeight]
+  | succ n ih =>
+    rw [bernMean, ih, ih]
+    rw [Finset.sum_range_succ']
+    have hz : binWeight p (n+1) 0 = (1-p)*binWeight p n 0 := by
+      rw [binWeight_zero, binWeight_zero, pow_succ]
+      ring
+    rw [hz]
+    have he : ∑ k ∈ Finset.range (n+1), binWeight p (n+1) (k+1) * f (k+1) =
+        (1-p)*(∑ k ∈ Finset.range (n+1), binWeight p n (k+1)*f (k+1)) +
+          p*(∑ k ∈ Finset.range (n+1), binWeight p n k*f (k+1)) := by
+      rw [Finset.mul_sum, Finset.mul_sum, ← Finset.sum_add_distrib]
+      apply Finset.sum_congr rfl
+      intro k hk
+      rw [binWeight_step p n k (by have h := Finset.mem_range.mp hk; omega)]
+      ring
+    rw [he]
+    have ht : ∑ k ∈ Finset.range (n+1), binWeight p n (k+1)*f (k+1) =
+        ∑ k ∈ Finset.range n, binWeight p n (k+1)*f (k+1) := by
+      rw [Finset.sum_range_succ, binWeight_outside p n (n+1) (by omega), zero_mul, add_zero]
+    rw [ht]
+    rw [Finset.sum_range_succ' (fun k => binWeight p n k * f k)]
+    ring
+
+#print axioms binWeight_step
+#print axioms bernMean_binomial
+
+end F19.Pure
