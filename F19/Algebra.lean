@@ -1389,3 +1389,77 @@ theorem planarFock_inequality (n : ℕ) :
 #print axioms planarFock_inequality
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+theorem square_image_Ioi :
+    (fun x : ℝ => x^2) '' Ioi 0 = Ioi 0 := by
+  ext x
+  constructor
+  · rintro ⟨y, hy, rfl⟩
+    exact pow_pos hy 2
+  · intro hx
+    exact ⟨Real.sqrt x, Real.sqrt_pos.2 hx, Real.sq_sqrt hx.le⟩
+
+theorem radial_lintegral_square (g : ℝ → ℝ≥0∞) (hg : Measurable g) :
+    (∫⁻ t in Ioi (0 : ℝ), g t) =
+      2 * (∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r * g (r^2)) := by
+  have h := lintegral_image_eq_lintegral_abs_det_fderiv_mul
+    (μ := (volume : Measure ℝ)) (s := Ioi (0 : ℝ))
+    (f := fun x : ℝ => x^2)
+    (f' := fun x : ℝ => (2*x) • (ContinuousLinearMap.id ℝ ℝ))
+    measurableSet_Ioi
+    (fun x _ => by
+      have hd : HasDerivAt (fun x : ℝ => x^2) (2*x) x := by
+        simpa using (hasDerivAt_id x).pow 2
+      convert hd.hasFDerivAt.hasFDerivWithinAt using 1
+      ext y
+      simp [ContinuousLinearMap.smulRight_apply, mul_comm])
+    (fun x hx y hy he => by
+      have hx' : 0 < x := hx
+      have hy' : 0 < y := hy
+      have hz : (x-y)*(x+y) = 0 := by nlinarith only [he]
+      rcases mul_eq_zero.mp hz with hxy | hxy
+      · linarith
+      · linarith)
+    g
+  rw [square_image_Ioi] at h
+  rw [h, ← lintegral_const_mul 2 (by fun_prop)]
+  apply setLIntegral_congr_fun measurableSet_Ioi
+  intro r hr
+  have hr' : 0 < r := hr
+  simp [ContinuousLinearMap.det_one_smulRight, abs_of_pos (mul_pos (by norm_num : (0:ℝ)<2) hr'),
+    ENNReal.ofReal_mul (by norm_num : (0:ℝ) ≤ 2), mul_assoc]
+
+theorem planar_radial_lintegral (g : ℝ → ℝ≥0∞) (hg : Measurable g) :
+    (∫⁻ z : ℂ, g (‖z‖^2)) =
+      ENNReal.ofReal Real.pi * (∫⁻ t in Ioi (0 : ℝ), g t) := by
+  calc
+    _ = ∫⁻ x in Ioi (0 : ℝ) ×ˢ Ioo (-Real.pi) Real.pi,
+        ENNReal.ofReal x.1 * g (x.1^2) := by
+      rw [← Complex.lintegral_comp_polarCoord_symm, polarCoord_target]
+      simp_rw [Complex.norm_polarCoord_symm, smul_eq_mul, sq_abs]
+    _ = ∫⁻ r in Ioi (0 : ℝ), ∫⁻ _θ in Ioo (-Real.pi) Real.pi,
+        ENNReal.ofReal r * g (r^2) := by
+      rw [MeasureTheory.Measure.volume_eq_prod, setLIntegral_prod]
+      exact (by fun_prop : Measurable (fun x : ℝ × ℝ => ENNReal.ofReal x.1 * g (x.1^2))).aemeasurable
+    _ = ENNReal.ofReal (2*Real.pi) *
+        (∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r * g (r^2)) := by
+      simp_rw [lintegral_const, Measure.restrict_apply MeasurableSet.univ,
+        Set.univ_inter, Real.volume_Ioo, sub_neg_eq_add]
+      rw [show Real.pi+Real.pi = 2*Real.pi by ring]
+      rw [lintegral_mul_const _ (by fun_prop)]
+      ac_rfl
+    _ = _ := by
+      rw [radial_lintegral_square g hg, ENNReal.ofReal_mul (by norm_num : (0:ℝ) ≤ 2)]
+      norm_num
+      ac_rfl
+
+#print axioms radial_lintegral_square
+#print axioms planar_radial_lintegral
+
+end F19
