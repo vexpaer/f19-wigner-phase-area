@@ -1173,7 +1173,7 @@ theorem enn_abs_tsum_le (a : ℕ → ℝ) :
     ENNReal.ofReal |∑' i, a i| ≤ ∑' i, ENNReal.ofReal |a i| := by
   by_cases h : (∑' i, ENNReal.ofReal |a i|) = ⊤
   · rw [h]; exact le_top
-  · have hc : (∑' i, ((Real.toNNReal |a i| : ℝ≥0) : ℝ≥0∞)) ≠ ⊤ := h
+  · have hc : (∑' i, (↑(Real.toNNReal |a i|) : ℝ≥0∞)) ≠ ⊤ := h
     have hs := ENNReal.tsum_coe_ne_top_iff_summable_coe.mp hc
     have ha : Summable (fun i => |a i|) := by
       simpa only [Real.coe_toNNReal _ (abs_nonneg _)] using hs
@@ -1319,15 +1319,15 @@ theorem planar_radial_integral (g : ℝ → ℝ) :
   calc
     _ = ∫ x in Ioi (0 : ℝ) ×ˢ Ioo (-Real.pi) Real.pi,
         x.1 * g (x.1^2) := by
-      rw [← Complex.integral_comp_polarCoord_symm, Complex.polarCoord_target]
+      rw [← Complex.integral_comp_polarCoord_symm, polarCoord_target]
       simp_rw [Complex.norm_polarCoord_symm, smul_eq_mul, sq_abs]
     _ = (∫ x in Ioi (0 : ℝ), x * g (x^2)) *
           (∫ _ in Ioo (-Real.pi) Real.pi, (1 : ℝ)) := by
-      rw [← setIntegral_prod_mul, volume_eq_prod]
+      rw [← setIntegral_prod_mul, MeasureTheory.Measure.volume_eq_prod]
       simp_rw [mul_one]
     _ = 2 * Real.pi * (∫ x in Ioi (0 : ℝ), x * g (x^2)) := by
       simp_rw [integral_const, measureReal_restrict_apply MeasurableSet.univ, Set.univ_inter,
-        volume_real_Ioo_of_le (a := -Real.pi) (b := Real.pi) (by linarith [Real.pi_nonneg]),
+        Real.volume_real_Ioo_of_le (a := -Real.pi) (b := Real.pi) (by linarith [Real.pi_nonneg]),
         sub_neg_eq_add, smul_eq_mul, mul_one]
       ring
     _ = _ := by
@@ -1350,7 +1350,7 @@ theorem planarWigner_abs_integral (n : ℕ) :
     (∫ z : ℂ, |planarWigner n z|) = ∫ t in Ioi (0 : ℝ), |radialWigner n t| := by
   unfold planarWigner
   simp_rw [abs_div, abs_of_pos Real.pi_pos, div_eq_mul_inv]
-  rw [integral_mul_const, planar_radial_integral]
+  rw [integral_mul_const, planar_radial_integral (fun t => |radialWigner n t|)]
   field_simp [Real.pi_ne_zero]
 
 theorem planarHusimiRoot_integral (n : ℕ) :
@@ -1362,7 +1362,8 @@ theorem planarHusimiRoot_integral (n : ℕ) :
   have h := Real.sq_sqrt Real.pi_nonneg
   have hs := Real.sqrt_pos.2 Real.pi_pos
   field_simp [hs.ne']
-  nlinarith only [h]
+  rw [← h]
+  ring
 
 theorem planarFock_inequality (n : ℕ) :
     8 * Real.pi * (∫ z : ℂ, |planarWigner n z|) ≤
