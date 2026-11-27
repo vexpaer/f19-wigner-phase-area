@@ -127,9 +127,11 @@ theorem gammaRatio_shift_lower (n : ℝ) (hn : 1 ≤ n) :
   have h3 : 0 ≤ n+6 := by linarith
   have he : gammaRatio (n+6) =
       ((n+6)/(n+5))*((n+4)/(n+3))*((n+2)/(n+1))*gammaRatio n := by
-    rw [show n+6 = (n+4)+2 by ring, gammaRatio_step (n+4) h2,
-      show n+4 = (n+2)+2 by ring, gammaRatio_step (n+2) h1,
-      gammaRatio_step n h0]
+    have e4 := gammaRatio_step (n+4) h2
+    rw [show n+4+2 = n+6 by ring, show n+4+1 = n+5 by ring] at e4
+    have e2 := gammaRatio_step (n+2) h1
+    rw [show n+2+2 = n+4 by ring, show n+2+1 = n+3 by ring] at e2
+    rw [e4, e2, gammaRatio_step n h0]
     ring
   have hl := gammaRatio_lower (n+6) h3
   rw [he] at hl
@@ -183,7 +185,7 @@ theorem gamma_moment_gap (n : ℝ) (hn : 1 ≤ n) :
   have hnum : 0 ≤ shiftNum n := by unfold shiftNum; positivity
   have h := shifted_poly_gap n hn
   have hl : momentPoly n < 108*(shiftNum n/shiftDen n)^4 := by
-    rw [div_pow, mul_div_assoc]
+    rw [div_pow, ← mul_div_assoc]
     exact (lt_div_iff₀ (pow_pos hd 4)).2 h
   have hp : 0 ≤ shiftNum n / shiftDen n := div_nonneg hnum hd.le
   have hshift := gammaRatio_shift_lower n hn
