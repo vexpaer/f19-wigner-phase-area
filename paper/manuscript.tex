@@ -1,0 +1,157 @@
+\documentclass[11pt]{article}
+\usepackage[margin=0.8in]{geometry}
+\usepackage{amsmath,amssymb,amsthm,mathtools}
+\usepackage{microtype}
+\usepackage[hidelinks]{hyperref}
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newcommand{\R}{\mathbb R}
+\newcommand{\dd}{\,\mathrm d}
+\newcommand{\ket}[1]{\lvert #1\rangle}
+\newcommand{\bra}[1]{\langle #1\rvert}
+\newcommand{\norm}[1]{\lVert #1\rVert}
+\title{A sharp Wigner--Husimi inequality for phase-invariant bosonic states}
+\author{Ximing Wang\quad\texttt{\href{mailto:vexpaer@gmail.com}{vexpaer@gmail.com}}}
+\date{27 November 2026}
+\begin{document}
+\maketitle
+\begin{abstract}
+Gagatsos recently conjectured that the Wigner $L^1$ norm of a single-mode quantum state is at most the squared integral of the square root of its Husimi density divided by $8\pi$. We establish this inequality, with its sharp constant, for every state diagonal in the Fock basis, including countable mixtures with no energy cutoff. For a nonvacuum number state we combine a fourth-moment estimate for Laguerre functions with a gamma-ratio bound. Countable mixtures follow from the triangle inequality, Cauchy--Schwarz and Tonelli's theorem. Among phase-invariant states with a finite Husimi square-root integral, equality holds precisely for the vacuum. Displacement covariance extends the result to displaced phase-invariant states. A Lean 4 formalization verifies the inequality for explicit planar Wigner and Husimi series; the conventional operator identification is supplied separately in the mathematical proof.
+\end{abstract}
+
+\section{Setting and result}
+Set $\hbar=1$, let $\mathbf r=(x,p)\in\R^2$ and put $\alpha=(x+ip)/\sqrt2$. For a density operator $\rho$, use the normalized phase-space densities
+\begin{equation}
+ W_\rho(\mathbf r)=\frac{1}{\pi}\operatorname{Tr}\bigl(\rho D(\alpha)\Pi D(\alpha)^\dagger\bigr),\qquad
+ Q_\rho(\mathbf r)=\frac{1}{2\pi}\bra{\alpha}\rho\ket{\alpha},
+\end{equation}
+where $\Pi=(-1)^{\hat n}$, $D(\alpha)$ is the displacement operator, and $\ket{\alpha}$ is a coherent state. Write $M(\rho)=\int_{\R^2}\sqrt{Q_\rho}\dd^2\mathbf r$. Conjecture 1 of Gagatsos~\cite{gagatsos} asserts
+\begin{equation}\label{eq:target}
+ \norm{W_\rho}_1\leq \frac{M(\rho)^2}{8\pi}
+\end{equation}
+for all single-mode states. The cited work proves a weaker universal constant $1/(4\pi)$ and gives the convexity reduction to pure states. We prove the sharp bound on the phase-invariant sector.
+
+\begin{theorem}\label{thm:main}
+Let $\rho$ be a single-mode density operator invariant under $e^{-i\theta\hat n}$ for every real $\theta$. Then \eqref{eq:target} holds in the extended nonnegative reals. If $M(\rho)<\infty$, equality holds if and only if $\rho=\ket{0}\bra{0}$. The constant $1/(8\pi)$ is optimal on this class.
+\end{theorem}
+Phase invariance implies that all off-diagonal Fock matrix elements vanish: the $(n,m)$ entry acquires a factor $e^{-i\theta(n-m)}$, which cannot be identically one when $n\ne m$. Thus the states in the theorem are exactly the density operators $\rho=\sum_{n\geq0}p_n\ket n\bra n$, with $p_n\geq0$ and $\sum_n p_n=1$.
+
+\section{Reduction to a one-dimensional inequality}
+For the number state $\ket n$, let $t=x^2+p^2$ and denote by $L_n$ the ordinary Laguerre polynomial
+\begin{equation}
+ L_n(u)=\sum_{j=0}^n(-1)^j\binom{n}{j}\frac{u^j}{j!}.
+\end{equation}
+The Fock-state phase-space formulas are
+\begin{equation}\label{eq:densities}
+ W_n(\mathbf r)=\frac{(-1)^n}{\pi}e^{-t}L_n(2t),\qquad
+ Q_n(\mathbf r)=\frac{e^{-t/2}(t/2)^n}{2\pi n!}.
+\end{equation}
+For completeness, the second follows from $|\langle n|\alpha\rangle|^2=e^{-|\alpha|^2}|\alpha|^{2n}/n!$. For the first, parity conjugates a displacement to its inverse, so $D(\alpha)\Pi D(\alpha)^\dagger=D(2\alpha)\Pi$. The standard normal-ordered displacement identity~\cite{cahill} gives
+\[
+ \bra n D(\beta)\ket n=e^{-|\beta|^2/2}\sum_{j=0}^n\frac{(-|\beta|^2)^j}{(j!)^2}\frac{n!}{(n-j)!}
+ =e^{-|\beta|^2/2}L_n(|\beta|^2).
+\]
+Taking $\beta=2\alpha$ proves \eqref{eq:densities}. These identities fix the normalization used throughout.
+
+For a radial integrand $g(t)$, planar integration is $\pi\int_0^\infty g(t)\dd t$. Consequently, writing $f_n(t)=e^{-t}L_n(2t)$, one has
+\begin{align}
+ A_n&:=\norm{W_n}_1=\int_0^\infty |f_n(t)|\dd t,\\
+ B_n&:=\frac{M(\ket n\bra n)^2}{8\pi}
+ =\frac{2^n\Gamma(n/2+1)^2}{n!}
+ =\sqrt\pi\,\frac{\Gamma((n+2)/2)}{\Gamma((n+1)/2)}.\label{eq:B}
+\end{align}
+The last equality is gamma duplication. In the preceding integral the substitution $t=4s$ yields the gamma integral directly. The vacuum satisfies $A_0=B_0=1$.
+
+\section{A fourth-moment certificate}
+\begin{lemma}\label{lem:moment}
+For every $n\geq0$,
+\begin{equation}\label{eq:moments}
+ \int_0^\infty f_n(t)^2\dd t=\tfrac12,\qquad
+ \int_0^\infty t^4 f_n(t)^2\dd t=\frac{P(n)}{32},
+\end{equation}
+where $P(n)=70n^4+140n^3+170n^2+100n+24$.
+\end{lemma}
+\begin{proof}
+The Laguerre polynomials are orthonormal with weight $e^{-u}$ on $[0,\infty)$. One direct verification uses
+\[
+ \int_0^\infty e^{-u}u^k L_n(u)\dd u
+ =(-1)^n k!\binom{k}{n}.
+\]
+Indeed, after expanding $L_n$, the identity follows by comparing the coefficient of $z^k$ in
+\[
+ (1+z)^k\sum_{j=0}^n(-1)^j\binom{n}{j}(1+z)^j=(-z)^n(1+z)^k.
+\]
+It implies orthogonality against polynomials of degree below $n$; the leading coefficient $(-1)^n/n!$ gives the unit norm. The recurrence
+\[
+ uL_n(u)=(2n+1)L_n(u)-(n+1)L_{n+1}(u)-nL_{n-1}(u)
+\]
+(with absent negative-index terms interpreted as zero) then gives
+\begin{align*}
+ u^2L_n={}&n(n-1)L_{n-2}-4n^2L_{n-1}+(6n^2+6n+2)L_n\\
+ &-4(n+1)^2L_{n+1}+(n+1)(n+2)L_{n+2}.
+\end{align*}
+The squared norm of this expression is the sum of the squares of its five coefficients, which expands to $P(n)$. Substitution $u=2t$ proves both equalities in \eqref{eq:moments}.
+\end{proof}
+
+\begin{lemma}\label{lem:upper}
+For every $n\geq0$, $A_n^8\leq \pi^4 P(n)/1728$.
+\end{lemma}
+\begin{proof}
+For $a>0$ apply Cauchy--Schwarz with the weight $1+(t/a)^4$. The reciprocal-weight integral is $a\pi/(2\sqrt2)$, by the elementary beta integral. Lemma~\ref{lem:moment} gives
+\[
+ A_n^2\leq\left(\frac12+\frac{P(n)}{32a^4}\right)\frac{\pi a}{2\sqrt2}.
+\]
+Choose $a^4=6P(n)/32$, which is positive. The right-hand side becomes $\pi a/(3\sqrt2)$. Raising to the fourth power gives the result.
+\end{proof}
+
+\section{Comparison with the Husimi integral}
+Define $R_n=\Gamma((n+2)/2)/\Gamma((n+1)/2)$. The gamma recurrence yields $R_{n+2}/R_n=(n+2)/(n+1)$. The quantity $R_n^2/(n+1/2)$ decreases along each parity subsequence, since
+\[
+ (n+1)^2(n+5/2)-(n+2)^2(n+1/2)=\tfrac12>0.
+\]
+By Stirling's formula its limit is $1/2$. It follows that $R_n^2\geq(n+1/2)/2$ and, by \eqref{eq:B},
+\begin{equation}\label{eq:gamma}
+ B_n^8\geq\frac{\pi^4(n+1/2)^4}{16}.
+\end{equation}
+For $n\geq1$, put $y=n-1\geq0$. Direct expansion gives
+\[
+ 108(n+1/2)^4-P(n)=38y^4+228y^3+448y^2+318y+\frac{171}{4}>0.
+\]
+Together with Lemma~\ref{lem:upper} and \eqref{eq:gamma}, this proves $A_n<B_n$ for every $n\geq1$. Thus the sharp inequality holds for all number states and is saturated only by the vacuum.
+
+\section{Countable mixtures and equality}
+Let $\rho=\sum_n p_n\ket n\bra n$ be a phase-invariant state. Since displaced parity and coherent-state projections are bounded operators, their traces against the finite partial sums converge pointwise to the traces against $\rho$ by trace-norm continuity. In particular, $W_\rho=\sum_n p_n W_n$ and $Q_\rho=\sum_n p_n Q_n$, with absolute pointwise convergence of the Wigner series because $|W_n|\leq1/\pi$. The triangle inequality and Tonelli's theorem imply
+\[
+ \norm{W_\rho}_1\leq\sum_n p_n A_n.
+\]
+A countable Cauchy--Schwarz inequality applied at two phase-space points gives
+\[
+ \sum_n p_n\sqrt{Q_n(\mathbf r)Q_n(\mathbf s)}
+ \leq\sqrt{Q_\rho(\mathbf r)Q_\rho(\mathbf s)}.
+\]
+Integrating over both points and using Tonelli, one obtains $\sum_n p_n M(\ket n\bra n)^2\leq M(\rho)^2$. This is the concavity reduction of~\cite{gagatsos} in a form that also accommodates infinite integrals. Hence
+\[
+ \norm{W_\rho}_1\leq\sum_n p_n A_n\leq\sum_n p_n B_n\leq\frac{M(\rho)^2}{8\pi}.
+\]
+When $M(\rho)<\infty$ all these sums are finite. If $p_n>0$ for any $n\geq1$, the middle inequality is strict by the number-state comparison. Otherwise $p_0=1$, so the vacuum is the unique finite equality case and fixes the sharp constant. This completes the proof of Theorem~\ref{thm:main}. For infinite $M$ the extended inequality is automatic; equality is understood for finite functionals only.
+
+\paragraph{Displaced states.} A displacement translates both densities and preserves the two integrals in \eqref{eq:target}. The theorem therefore also applies to every displaced Fock-diagonal state, with finite equality precisely for displaced vacua (coherent states). The argument does not cover general superpositions of distinct Fock levels.
+
+\section{Formal verification and scope}
+The code repository is \url{https://github.com/vexpaer/f19-wigner-phase-area}. The successful CI run~\href{https://github.com/vexpaer/f19-wigner-phase-area/actions/runs/45996691254}{70}, commit \href{https://github.com/vexpaer/f19-wigner-phase-area/commit/cd2380ff98a2d33c46ef7a776d3efcfc8155a689}{\texttt{cd2380f}}, verifies the theorem \texttt{F19.planar\_diagonal\_inequality} in Lean 4.19.0 with Mathlib v4.19.0. Its statement is the extended-real planar integral inequality for the explicitly defined Fock-diagonal Wigner series and Husimi square-root series, with nonnegative weights. The audit reports only \texttt{propext}, \texttt{Classical.choice} and \texttt{Quot.sound}. In particular, the Laguerre moments, the reciprocal quartic integral, gamma duplication, the weighted integral estimate, countable mixture bound and polar-coordinate change of variables are derived rather than assumed. CI run~\href{https://github.com/vexpaer/f19-wigner-phase-area/actions/runs/45996963387}{74} also verifies almost-everywhere absolute convergence of the Wigner series when the Husimi square-root integral is finite, and strict radial comparison for every mixture with positive nonvacuum weight in that finite case. The operator-to-function identification in Section 2 and the quantum density-operator framework are outside the verified statements.
+
+For reproducibility, the Lean code avoids Stirling asymptotics by using gamma log-convexity. In detail, log-convexity at $x+1$ between $x+1/2$ and $x+3/2$ implies $\Gamma(x+1)^2\leq\Gamma(x+1/2)\Gamma(x+3/2)$. Substituting $x=(n+1)/2$ and the recurrence gives $R_n^2\geq(n+1)^2/[2(n+2)]$. Applying this bound at $n+6$ and eliminating $R_{n+6}$ by three recurrence steps yields
+\[
+ 2R_n^2\geq \frac{U(n)}{V(n)},\quad
+ U(n)=\big((n+1)(n+3)(n+5)(n+7)\big)^2,\quad
+ V(n)=(n+8)\big((n+2)(n+4)(n+6)\big)^2.
+\]
+The polynomial $108U(n)^4-P(n)V(n)^4$ has strictly positive coefficients in $n-1$ (the exact coefficient expansion is certified in \texttt{F19.shifted\_poly\_gap}). Thus $P(n)<1728R_n^8$ for $n\geq1$, which is the required strict comparison. The mathematical proof above uses the shorter asymptotic route; both routes establish the same bound on $A_n$ relative to $B_n$.
+
+\paragraph{Draft status.} The mathematical claim concerns a restricted sector of Conjecture 1, not the general single-mode conjecture. This working manuscript and formalization were developed with AI assistance; independent mathematical review and the applicable disclosure statement must be finalized before submission. The draft is not a priority or peer-review claim.
+
+\begin{thebibliography}{9}
+\bibitem{gagatsos} C. N. Gagatsos, Wigner negativity costs phase-space area: A conjectured refinement of the Lieb--Solovej inequality at R\'enyi order one half, \href{https://arxiv.org/abs/2611.30969}{arXiv:2611.30969v1} (2026).
+\bibitem{cahill} K. E. Cahill and R. J. Glauber, Ordered expansions in boson amplitude operators, \emph{Physical Review} \textbf{177}, 1857--1881 (1969). \href{https://doi.org/10.1103/PhysRev.177.1857}{doi:10.1103/PhysRev.177.1857}.
+\end{thebibliography}
+\end{document}

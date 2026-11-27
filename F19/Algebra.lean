@@ -1088,3 +1088,699 @@ theorem fock_radial_husimi_inequality (n : ℕ) :
 #print axioms fock_radial_husimi_inequality
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory
+open scoped ENNReal
+
+-- Cauchy–Schwarz for arbitrary countable sums, including infinite values.
+theorem enn_countable_cauchy (a b : ℕ → ℝ≥0∞) :
+    (∑' i, a i * b i) ≤
+      (∑' i, a i ^ 2) ^ (1/2 : ℝ) * (∑' i, b i ^ 2) ^ (1/2 : ℝ) := by
+  have hpq : Real.HolderConjugate 2 2 :=
+    Real.holderConjugate_iff.mpr (by norm_num)
+  have ha : AEMeasurable a Measure.count := (measurable_of_countable a).aemeasurable
+  have hb : AEMeasurable b Measure.count := (measurable_of_countable b).aemeasurable
+  have h := ENNReal.lintegral_mul_le_Lp_mul_Lq Measure.count hpq ha hb
+  simpa only [Pi.mul_apply, ENNReal.rpow_two, lintegral_count] using h
+
+theorem enn_half_sq (x : ℝ≥0∞) : (x ^ (1/2 : ℝ))^2 = x := by
+  rw [← ENNReal.rpow_two, ← ENNReal.rpow_mul]
+  norm_num [ENNReal.rpow_one]
+
+noncomputable def mixtureRoot {α : Type*} (p : ℕ → ℝ≥0∞)
+    (f : ℕ → α → ℝ≥0∞) (x : α) : ℝ≥0∞ :=
+  (∑' i, p i * f i x ^ 2) ^ (1/2 : ℝ)
+
+theorem mixtureRoot_pair_bound {α : Type*} (p : ℕ → ℝ≥0∞)
+    (f : ℕ → α → ℝ≥0∞) (x y : α) :
+    (∑' i, p i * (f i x * f i y)) ≤ mixtureRoot p f x * mixtureRoot p f y := by
+  have h := enn_countable_cauchy
+    (fun i => (p i)^(1/2 : ℝ) * f i x)
+    (fun i => (p i)^(1/2 : ℝ) * f i y)
+  simp only [mul_pow, enn_half_sq] at h
+  unfold mixtureRoot
+  refine le_trans (le_of_eq ?_) h
+  apply tsum_congr
+  intro i
+  calc
+    p i * (f i x * f i y) = ((p i)^(1/2 : ℝ))^2 * (f i x * f i y) := by rw [enn_half_sq]
+    _ = _ := by rw [pow_two]; ac_rfl
+
+-- A Tonelli proof of concavity of the squared root integral for countable
+-- nonnegative mixtures; no finite-entropy hypothesis is necessary.
+theorem countable_mixture_root_bound {α : Type*} [MeasurableSpace α]
+    (μ : Measure α) (p : ℕ → ℝ≥0∞) (f : ℕ → α → ℝ≥0∞)
+    (hf : ∀ i, Measurable (f i)) :
+    (∑' i, p i * (∫⁻ x, f i x ∂μ)^2) ≤
+      (∫⁻ x, mixtureRoot p f x ∂μ)^2 := by
+  have hm : Measurable (mixtureRoot p f) := by
+    unfold mixtureRoot
+    exact (Measurable.ennreal_tsum (fun i => (hf i).pow_const 2 |>.const_mul (p i))).pow_const (1/2 : ℝ)
+  have he : (∫⁻ x, ∫⁻ y, ∑' i, p i * (f i x * f i y) ∂μ ∂μ) =
+      ∑' i, p i * (∫⁻ x, f i x ∂μ)^2 := by
+    have hx (x : α) : (∫⁻ y, ∑' i, p i * (f i x * f i y) ∂μ) =
+        ∑' i, (p i * f i x) * (∫⁻ y, f i y ∂μ) := by
+      rw [lintegral_tsum (fun i => ((measurable_const.mul (measurable_const.mul (hf i)))).aemeasurable)]
+      apply tsum_congr
+      intro i
+      simp_rw [← mul_assoc]
+      rw [lintegral_const_mul _ (hf i)]
+    simp_rw [hx]
+    rw [lintegral_tsum (fun i => ((measurable_const.mul (hf i)).mul_const _).aemeasurable)]
+    apply tsum_congr
+    intro i
+    rw [lintegral_mul_const _ (measurable_const.mul (hf i)), lintegral_const_mul _ (hf i), pow_two]
+    ac_rfl
+  rw [← he, pow_two, ← lintegral_lintegral_mul hm.aemeasurable hm.aemeasurable]
+  exact lintegral_mono (fun x => lintegral_mono (fun y => mixtureRoot_pair_bound p f x y))
+
+#print axioms enn_countable_cauchy
+#print axioms mixtureRoot_pair_bound
+#print axioms countable_mixture_root_bound
+
+end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+theorem enn_abs_tsum_le (a : ℕ → ℝ) :
+    ENNReal.ofReal |∑' i, a i| ≤ ∑' i, ENNReal.ofReal |a i| := by
+  by_cases h : (∑' i, ENNReal.ofReal |a i|) = ⊤
+  · rw [h]; exact le_top
+  · have hc : (∑' i, (↑(Real.toNNReal |a i|) : ℝ≥0∞)) ≠ ⊤ := h
+    have hs := ENNReal.tsum_coe_ne_top_iff_summable_coe.mp hc
+    have ha : Summable (fun i => |a i|) := by
+      simpa only [Real.coe_toNNReal _ (abs_nonneg _)] using hs
+    rw [← ENNReal.ofReal_tsum_of_nonneg (fun i => abs_nonneg (a i)) ha]
+    apply ENNReal.ofReal_le_ofReal
+    simpa only [Real.norm_eq_abs] using
+      (norm_tsum_le_tsum_norm (f := a) (by simpa only [Real.norm_eq_abs] using ha))
+
+theorem radialRoot_integrable (n : ℕ) :
+    IntegrableOn (radialHusimiRoot n) (Ioi (0 : ℝ)) := by
+  apply Integrable.of_integral_ne_zero
+  rw [radialHusimiRoot_integral]
+  have h := Real.Gamma_pos_of_pos (show 0 < (n : ℝ)/2+1 by positivity)
+  positivity
+
+theorem radialFock_enn_component (n : ℕ) :
+    8 * (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal |radialWigner n t|) ≤
+      (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal (radialHusimiRoot n t))^2 := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  have hW : Integrable (fun t => |radialWigner n t|) μ := by
+    simp_rw [radialWigner_abs]
+    simpa only [Real.norm_eq_abs] using (radialFock_integrable n).norm
+  have hQ : Integrable (radialHusimiRoot n) μ := radialRoot_integrable n
+  have hQpos : 0 ≤ᵐ[μ] radialHusimiRoot n := by
+    filter_upwards [ae_restrict_mem (μ := volume) measurableSet_Ioi] with t ht
+    exact radialHusimiRoot_nonneg n t ht.le
+  have hWpos : 0 ≤ᵐ[μ] (fun t => |radialWigner n t|) :=
+    Filter.Eventually.of_forall (fun t => abs_nonneg _)
+  have h := fock_radial_husimi_inequality n
+  have he : (∫ t in Ioi (0 : ℝ), Real.sqrt (radialHusimi n t)) =
+      ∫ t in Ioi (0 : ℝ), radialHusimiRoot n t := by
+    apply setIntegral_congr_fun measurableSet_Ioi
+    intro t ht
+    change Real.sqrt (radialHusimiRoot n t ^ 2) = radialHusimiRoot n t
+    rw [Real.sqrt_sq_eq_abs, abs_of_nonneg (radialHusimiRoot_nonneg n t ht.le)]
+  rw [he] at h
+  have hr : 8 * (∫ t, |radialWigner n t| ∂μ) ≤
+      (∫ t, radialHusimiRoot n t ∂μ)^2 := by
+    change (∫ t, |radialWigner n t| ∂μ) ≤ (∫ t, radialHusimiRoot n t ∂μ)^2 / 8 at h
+    linarith
+  have hnn := integral_nonneg_of_ae hQpos
+  have h' := ENNReal.ofReal_le_ofReal hr
+  rw [ENNReal.ofReal_mul (by norm_num : (0 : ℝ) ≤ 8),
+    ENNReal.ofReal_pow hnn, ofReal_integral_eq_lintegral_ofReal hW hWpos,
+    ofReal_integral_eq_lintegral_ofReal hQ hQpos] at h'
+  norm_num at h'
+  exact h'
+
+-- Countable mixtures with an explicit signed radial Wigner series.
+noncomputable def diagonalWigner (p : ℕ → ℝ) (t : ℝ) : ℝ :=
+  ∑' n, p n * radialWigner n t
+
+noncomputable def diagonalHusimiRoot (p : ℕ → ℝ) (t : ℝ) : ℝ≥0∞ :=
+  mixtureRoot (fun n => ENNReal.ofReal (p n))
+    (fun n t => ENNReal.ofReal (radialHusimiRoot n t)) t
+
+theorem diagonal_radial_inequality (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n) :
+    8 * (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal |diagonalWigner p t|) ≤
+      (∫⁻ t in Ioi (0 : ℝ), diagonalHusimiRoot p t)^2 := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  let q : ℕ → ℝ≥0∞ := fun n => ENNReal.ofReal (p n)
+  let f : ℕ → ℝ → ℝ≥0∞ := fun n t => ENNReal.ofReal (radialHusimiRoot n t)
+  let w : ℕ → ℝ → ℝ≥0∞ := fun n t => ENNReal.ofReal |radialWigner n t|
+  have hf : ∀ n, Measurable (f n) := by
+    intro n
+    dsimp [f, radialHusimiRoot]
+    fun_prop
+  have hw : ∀ n, Measurable (w n) := by
+    intro n
+    dsimp [w, radialWigner, radialFock, laguerre]
+    fun_prop
+  have htriangle (t : ℝ) :
+      ENNReal.ofReal |diagonalWigner p t| ≤ ∑' n, q n * w n t := by
+    unfold diagonalWigner
+    have h := enn_abs_tsum_le (fun n => p n * radialWigner n t)
+    simp_rw [abs_mul, abs_of_nonneg (hp _), ENNReal.ofReal_mul (hp _)] at h
+    exact h
+  have hsum : (∫⁻ t, ∑' n, q n * w n t ∂μ) =
+      ∑' n, q n * (∫⁻ t, w n t ∂μ) := by
+    rw [lintegral_tsum (fun n => (measurable_const.mul (hw n)).aemeasurable)]
+    apply tsum_congr
+    intro n
+    exact lintegral_const_mul _ (hw n)
+  change 8 * (∫⁻ t, ENNReal.ofReal |diagonalWigner p t| ∂μ) ≤
+    (∫⁻ t, mixtureRoot q f t ∂μ)^2
+  calc
+    _ ≤ 8 * (∫⁻ t, ∑' n, q n * w n t ∂μ) :=
+      mul_le_mul_left' (lintegral_mono htriangle) _
+    _ = ∑' n, q n * (8 * (∫⁻ t, w n t ∂μ)) := by
+      rw [hsum, ← ENNReal.tsum_mul_left]
+      apply tsum_congr
+      intro n
+      ac_rfl
+    _ ≤ ∑' n, q n * (∫⁻ t, f n t ∂μ)^2 := by
+      exact ENNReal.tsum_le_tsum (fun n => mul_le_mul_left' (radialFock_enn_component n) _)
+    _ ≤ _ := countable_mixture_root_bound μ q f hf
+
+#print axioms enn_abs_tsum_le
+#print axioms radialFock_enn_component
+#print axioms diagonal_radial_inequality
+
+end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+theorem diagonalHusimiRoot_sq (p : ℕ → ℝ) (t : ℝ) (ht : 0 ≤ t) :
+    diagonalHusimiRoot p t ^ 2 =
+      ∑' n, ENNReal.ofReal (p n) * ENNReal.ofReal (radialHusimi n t) := by
+  unfold diagonalHusimiRoot mixtureRoot
+  rw [enn_half_sq]
+  apply tsum_congr
+  intro n
+  rw [radialHusimi, ENNReal.ofReal_pow (radialHusimiRoot_nonneg n t ht)]
+
+theorem diagonalHusimiRoot_formula (p : ℕ → ℝ) (t : ℝ) (ht : 0 ≤ t) :
+    diagonalHusimiRoot p t ^ 2 =
+      ∑' n, ENNReal.ofReal (p n) *
+        ENNReal.ofReal ((1/2 : ℝ)*Real.exp (-t/2)*(t/2)^n/(n.factorial : ℝ)) := by
+  rw [diagonalHusimiRoot_sq p t ht]
+  apply tsum_congr
+  intro n
+  rw [radialHusimi_density_formula n t ht]
+
+#print axioms diagonalHusimiRoot_sq
+#print axioms diagonalHusimiRoot_formula
+
+end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+-- The paper uses the real quadrature coordinates, represented here by ℂ
+-- with its standard Lebesgue measure and t = |z|².
+theorem planar_radial_integral (g : ℝ → ℝ) :
+    (∫ z : ℂ, g (‖z‖^2)) = Real.pi * (∫ t in Ioi (0 : ℝ), g t) := by
+  calc
+    _ = ∫ x in Ioi (0 : ℝ) ×ˢ Ioo (-Real.pi) Real.pi,
+        x.1 * g (x.1^2) := by
+      rw [← Complex.integral_comp_polarCoord_symm, polarCoord_target]
+      simp_rw [Complex.norm_polarCoord_symm, smul_eq_mul, sq_abs]
+    _ = (∫ x in Ioi (0 : ℝ), x * g (x^2)) *
+          (∫ _ in Ioo (-Real.pi) Real.pi, (1 : ℝ)) := by
+      rw [← setIntegral_prod_mul, MeasureTheory.Measure.volume_eq_prod]
+      simp_rw [mul_one]
+    _ = 2 * Real.pi * (∫ x in Ioi (0 : ℝ), x * g (x^2)) := by
+      simp_rw [integral_const, measureReal_restrict_apply MeasurableSet.univ, Set.univ_inter,
+        Real.volume_real_Ioo_of_le (a := -Real.pi) (b := Real.pi) (by linarith [Real.pi_nonneg]),
+        sub_neg_eq_add, smul_eq_mul, mul_one]
+      ring
+    _ = _ := by
+      have h := integral_comp_rpow_Ioi_of_pos (g := g) (p := (2 : ℝ)) (by norm_num)
+      simp only [show (2 : ℝ)-1 = 1 by norm_num, Real.rpow_one, Real.rpow_two,
+        smul_eq_mul, mul_assoc, integral_const_mul] at h
+      linarith [congrArg (fun x : ℝ => Real.pi*x) h]
+
+noncomputable def planarWigner (n : ℕ) (z : ℂ) : ℝ :=
+  radialWigner n (‖z‖^2) / Real.pi
+
+noncomputable def planarHusimiRoot (n : ℕ) (z : ℂ) : ℝ :=
+  radialHusimiRoot n (‖z‖^2) / Real.sqrt Real.pi
+
+theorem planarHusimiRoot_nonneg (n : ℕ) (z : ℂ) :
+    0 ≤ planarHusimiRoot n z :=
+  div_nonneg (radialHusimiRoot_nonneg n _ (sq_nonneg _)) (Real.sqrt_nonneg _)
+
+theorem planarWigner_abs_integral (n : ℕ) :
+    (∫ z : ℂ, |planarWigner n z|) = ∫ t in Ioi (0 : ℝ), |radialWigner n t| := by
+  unfold planarWigner
+  simp_rw [abs_div, abs_of_pos Real.pi_pos, div_eq_mul_inv]
+  rw [integral_mul_const, planar_radial_integral (fun t => |radialWigner n t|)]
+  field_simp [Real.pi_ne_zero]
+
+theorem planarHusimiRoot_integral (n : ℕ) :
+    (∫ z : ℂ, planarHusimiRoot n z) =
+      Real.sqrt Real.pi * (∫ t in Ioi (0 : ℝ), radialHusimiRoot n t) := by
+  unfold planarHusimiRoot
+  simp_rw [div_eq_mul_inv]
+  rw [integral_mul_const, planar_radial_integral]
+  have h := Real.sq_sqrt Real.pi_nonneg
+  have hs := Real.sqrt_pos.2 Real.pi_pos
+  field_simp [hs.ne']
+  linear_combination (∫ t in Ioi (0 : ℝ), radialHusimiRoot n t) * (-h)
+
+theorem planarFock_inequality (n : ℕ) :
+    8 * Real.pi * (∫ z : ℂ, |planarWigner n z|) ≤
+      (∫ z : ℂ, planarHusimiRoot n z)^2 := by
+  rw [planarWigner_abs_integral, planarHusimiRoot_integral, mul_pow, Real.sq_sqrt Real.pi_nonneg]
+  have h := fock_radial_husimi_inequality n
+  have he : (∫ t in Ioi (0 : ℝ), Real.sqrt (radialHusimi n t)) =
+      ∫ t in Ioi (0 : ℝ), radialHusimiRoot n t := by
+    apply setIntegral_congr_fun measurableSet_Ioi
+    intro t ht
+    change Real.sqrt (radialHusimiRoot n t ^ 2) = radialHusimiRoot n t
+    rw [Real.sqrt_sq_eq_abs, abs_of_nonneg (radialHusimiRoot_nonneg n t ht.le)]
+  rw [he] at h
+  have h' : 8 * (∫ t in Ioi (0 : ℝ), |radialWigner n t|) ≤
+      (∫ t in Ioi (0 : ℝ), radialHusimiRoot n t)^2 := by linarith
+  calc
+    _ = Real.pi * (8 * (∫ t in Ioi (0 : ℝ), |radialWigner n t|)) := by ring
+    _ ≤ _ := mul_le_mul_of_nonneg_left h' Real.pi_nonneg
+
+#print axioms planar_radial_integral
+#print axioms planarWigner_abs_integral
+#print axioms planarHusimiRoot_integral
+#print axioms planarFock_inequality
+
+end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+theorem square_image_Ioi :
+    (fun x : ℝ => x^2) '' Ioi 0 = Ioi 0 := by
+  ext x
+  constructor
+  · rintro ⟨y, hy, rfl⟩
+    exact (pow_pos (show (0 : ℝ) < y from hy) 2 : 0 < y^2)
+  · intro hx
+    exact ⟨Real.sqrt x, Real.sqrt_pos.2 hx, Real.sq_sqrt hx.le⟩
+
+theorem radial_lintegral_square (g : ℝ → ℝ≥0∞) (hg : Measurable g) :
+    (∫⁻ t in Ioi (0 : ℝ), g t) =
+      2 * (∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r * g (r^2)) := by
+  have h := lintegral_image_eq_lintegral_abs_det_fderiv_mul
+    (μ := (volume : Measure ℝ)) (s := Ioi (0 : ℝ))
+    (f := fun x : ℝ => x^2)
+    (f' := fun x : ℝ => (2*x) • (ContinuousLinearMap.id ℝ ℝ))
+    measurableSet_Ioi
+    (fun x _ => by
+      have hd : HasDerivAt (fun x : ℝ => x^2) (2*x) x := by
+        simpa using (hasDerivAt_id x).pow 2
+      convert hd.hasFDerivAt.hasFDerivWithinAt using 1
+      ext y
+      simp [ContinuousLinearMap.smulRight_apply, mul_comm])
+    (fun x hx y hy he => by
+      have hx' : 0 < x := hx
+      have hy' : 0 < y := hy
+      change x^2 = y^2 at he
+      have hz : (x-y)*(x+y) = 0 := by nlinarith only [he]
+      rcases mul_eq_zero.mp hz with hxy | hxy
+      · linarith
+      · linarith)
+    g
+  rw [square_image_Ioi] at h
+  rw [h, ← lintegral_const_mul 2 (by fun_prop)]
+  apply setLIntegral_congr_fun measurableSet_Ioi
+  filter_upwards [] with r hr
+  have hr' : 0 < r := hr
+  have hd : ((2*r) • ContinuousLinearMap.id ℝ ℝ).det = 2*r := by
+    simpa using ContinuousLinearMap.det_one_smulRight (2*r)
+  rw [hd, abs_of_pos (mul_pos (by norm_num : (0:ℝ)<2) hr'),
+    ENNReal.ofReal_mul (by norm_num : (0:ℝ) ≤ 2)]
+  norm_num
+  <;> ac_rfl
+
+theorem planar_radial_lintegral (g : ℝ → ℝ≥0∞) (hg : Measurable g) :
+    (∫⁻ z : ℂ, g (‖z‖^2)) =
+      ENNReal.ofReal Real.pi * (∫⁻ t in Ioi (0 : ℝ), g t) := by
+  calc
+    _ = ∫⁻ x in Ioi (0 : ℝ) ×ˢ Ioo (-Real.pi) Real.pi,
+        ENNReal.ofReal x.1 * g (x.1^2) := by
+      rw [← Complex.lintegral_comp_polarCoord_symm, polarCoord_target]
+      simp_rw [Complex.norm_polarCoord_symm, smul_eq_mul, sq_abs]
+    _ = ∫⁻ r in Ioi (0 : ℝ), ∫⁻ _θ in Ioo (-Real.pi) Real.pi,
+        ENNReal.ofReal r * g (r^2) := by
+      rw [MeasureTheory.Measure.volume_eq_prod, setLIntegral_prod]
+      exact (by fun_prop : Measurable (fun x : ℝ × ℝ => ENNReal.ofReal x.1 * g (x.1^2))).aemeasurable
+    _ = ENNReal.ofReal (2*Real.pi) *
+        (∫⁻ r in Ioi (0 : ℝ), ENNReal.ofReal r * g (r^2)) := by
+      simp_rw [lintegral_const, Measure.restrict_apply MeasurableSet.univ,
+        Set.univ_inter, Real.volume_Ioo, sub_neg_eq_add]
+      rw [show Real.pi+Real.pi = 2*Real.pi by ring]
+      rw [lintegral_mul_const _ (by fun_prop)]
+      ac_rfl
+    _ = _ := by
+      rw [radial_lintegral_square g hg, ENNReal.ofReal_mul (by norm_num : (0:ℝ) ≤ 2)]
+      norm_num [mul_comm, mul_left_comm, mul_assoc]
+
+#print axioms radial_lintegral_square
+#print axioms planar_radial_lintegral
+
+end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+noncomputable def planarDiagonalWigner (p : ℕ → ℝ) (z : ℂ) : ℝ :=
+  diagonalWigner p (‖z‖^2) / Real.pi
+
+noncomputable def planarDiagonalHusimiRoot (p : ℕ → ℝ) (z : ℂ) : ℝ≥0∞ :=
+  (ENNReal.ofReal (Real.sqrt Real.pi))⁻¹ * diagonalHusimiRoot p (‖z‖^2)
+
+theorem diagonalWigner_measurable (p : ℕ → ℝ) : Measurable (diagonalWigner p) := by
+  classical
+  let a : ℕ → ℝ → ℝ := fun n t => p n * radialWigner n t
+  have ha (n : ℕ) : Measurable (a n) := by
+    dsimp [a, radialWigner, radialFock, laguerre]
+    fun_prop
+  let A : ℝ → ℝ≥0∞ := fun t => ∑' n, ENNReal.ofReal |a n t|
+  have hA : Measurable A := Measurable.ennreal_tsum (fun n => (ha n).abs.ennreal_ofReal)
+  let s : Set ℝ := {t | A t ≠ ⊤}
+  have hs : MeasurableSet s := (hA (measurableSet_singleton (⊤ : ℝ≥0∞))).compl
+  have hsum (t : ℝ) : t ∈ s ↔ Summable (fun n => a n t) := by
+    change A t ≠ ⊤ ↔ _
+    change (∑' n, (↑(Real.toNNReal |a n t|) : ℝ≥0∞)) ≠ ⊤ ↔ _
+    rw [ENNReal.tsum_coe_ne_top_iff_summable_coe]
+    simpa only [Real.coe_toNNReal _ (abs_nonneg _)] using
+      (summable_abs_iff : Summable (fun n => |a n t|) ↔ Summable (fun n => a n t))
+  let u : ℕ → ℝ → ℝ := fun N => s.indicator (fun t => ∑ n ∈ Finset.range N, a n t)
+  have hu (N : ℕ) : Measurable (u N) :=
+    (Finset.measurable_sum _ (fun n _ => ha n)).indicator hs
+  apply measurable_of_tendsto_metrizable hu
+  rw [tendsto_pi_nhds]
+  intro t
+  by_cases ht : t ∈ s
+  · simpa [u, ht, diagonalWigner, a] using ((hsum t).mp ht).hasSum.tendsto_sum_nat
+  · have hz : ¬ Summable (fun n => a n t) := fun h => ht ((hsum t).mpr h)
+    have he : diagonalWigner p t = 0 := by
+      exact tsum_eq_zero_of_not_summable hz
+    simp [u, ht, he, tendsto_const_nhds]
+
+theorem diagonalHusimiRoot_measurable (p : ℕ → ℝ) : Measurable (diagonalHusimiRoot p) := by
+  unfold diagonalHusimiRoot mixtureRoot
+  apply Measurable.pow_const
+  apply Measurable.ennreal_tsum
+  intro n
+  apply Measurable.const_mul
+  apply Measurable.pow_const
+  unfold radialHusimiRoot
+  fun_prop
+
+theorem planarDiagonalWigner_lintegral (p : ℕ → ℝ) :
+    (∫⁻ z : ℂ, ENNReal.ofReal |planarDiagonalWigner p z|) =
+      ∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal |diagonalWigner p t| := by
+  have hmeas : Measurable (fun t => ENNReal.ofReal |diagonalWigner p t|) :=
+    (diagonalWigner_measurable p).abs.ennreal_ofReal
+  have hpi : ENNReal.ofReal Real.pi ≠ 0 := by simp [Real.pi_pos]
+  have hpit : ENNReal.ofReal Real.pi ≠ ⊤ := ENNReal.ofReal_ne_top
+  have he : (fun z : ℂ => ENNReal.ofReal |planarDiagonalWigner p z|) =
+      (fun z : ℂ => (ENNReal.ofReal Real.pi)⁻¹ *
+        ENNReal.ofReal |diagonalWigner p (‖z‖^2)|) := by
+    funext z
+    unfold planarDiagonalWigner
+    rw [abs_div, abs_of_pos Real.pi_pos, div_eq_mul_inv,
+      ENNReal.ofReal_mul (abs_nonneg _), ENNReal.ofReal_inv_of_pos Real.pi_pos, mul_comm]
+  have hm : Measurable (fun z : ℂ => ENNReal.ofReal |diagonalWigner p (‖z‖^2)|) :=
+    hmeas.comp (by fun_prop)
+  rw [he, lintegral_const_mul _ hm,
+    planar_radial_lintegral _ hmeas, ← mul_assoc, ENNReal.inv_mul_cancel hpi hpit, one_mul]
+
+theorem planarDiagonalHusimiRoot_lintegral (p : ℕ → ℝ) :
+    (∫⁻ z : ℂ, planarDiagonalHusimiRoot p z) =
+      ENNReal.ofReal (Real.sqrt Real.pi) *
+        (∫⁻ t in Ioi (0 : ℝ), diagonalHusimiRoot p t) := by
+  have hs : 0 < Real.sqrt Real.pi := Real.sqrt_pos.2 Real.pi_pos
+  have h0 : ENNReal.ofReal (Real.sqrt Real.pi) ≠ 0 := by simp [hs]
+  have ht : ENNReal.ofReal (Real.sqrt Real.pi) ≠ ⊤ := ENNReal.ofReal_ne_top
+  have he : ENNReal.ofReal Real.pi = ENNReal.ofReal (Real.sqrt Real.pi)^2 := by
+    rw [← ENNReal.ofReal_pow hs.le, Real.sq_sqrt Real.pi_nonneg]
+  unfold planarDiagonalHusimiRoot
+  have hm : Measurable (fun z : ℂ => diagonalHusimiRoot p (‖z‖^2)) :=
+    (diagonalHusimiRoot_measurable p).comp (by fun_prop)
+  rw [lintegral_const_mul _ hm,
+    planar_radial_lintegral _ (diagonalHusimiRoot_measurable p), he, pow_two]
+  rw [← mul_assoc, ← mul_assoc, ENNReal.inv_mul_cancel h0 ht, one_mul]
+
+theorem planar_diagonal_inequality (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n) :
+    8 * ENNReal.ofReal Real.pi *
+      (∫⁻ z : ℂ, ENNReal.ofReal |planarDiagonalWigner p z|) ≤
+      (∫⁻ z : ℂ, planarDiagonalHusimiRoot p z)^2 := by
+  rw [planarDiagonalWigner_lintegral, planarDiagonalHusimiRoot_lintegral,
+    mul_pow, ← ENNReal.ofReal_pow (Real.sqrt_nonneg Real.pi),
+    Real.sq_sqrt Real.pi_nonneg]
+  calc
+    _ = ENNReal.ofReal Real.pi *
+        (8 * (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal |diagonalWigner p t|)) := by ac_rfl
+    _ ≤ _ := mul_le_mul_left' (diagonal_radial_inequality p hp) _
+
+#print axioms diagonalWigner_measurable
+#print axioms diagonalHusimiRoot_measurable
+#print axioms planar_diagonal_inequality
+
+end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+-- The finite-RHS theorem is not a consequence of Lean's totalized tsum:
+-- the signed Wigner series converges absolutely almost everywhere.
+theorem diagonal_series_abs_summable_ae (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n)
+    (hfinite : (∫⁻ t in Ioi (0 : ℝ), diagonalHusimiRoot p t) ≠ ⊤) :
+    ∀ᵐ t ∂(volume.restrict (Ioi (0 : ℝ))),
+      Summable (fun n => |p n * radialWigner n t|) := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  let q : ℕ → ℝ≥0∞ := fun n => ENNReal.ofReal (p n)
+  let f : ℕ → ℝ → ℝ≥0∞ := fun n t => ENNReal.ofReal (radialHusimiRoot n t)
+  let w : ℕ → ℝ → ℝ≥0∞ := fun n t => ENNReal.ofReal |radialWigner n t|
+  have hf : ∀ n, Measurable (f n) := by
+    intro n
+    dsimp [f, radialHusimiRoot]
+    fun_prop
+  have hw : ∀ n, Measurable (w n) := by
+    intro n
+    dsimp [w, radialWigner, radialFock, laguerre]
+    fun_prop
+  let S : ℝ → ℝ≥0∞ := fun t => ∑' n, q n * w n t
+  have hS : Measurable S := Measurable.ennreal_tsum (fun n => (hw n).const_mul (q n))
+  have hsum : (∫⁻ t, S t ∂μ) = ∑' n, q n * (∫⁻ t, w n t ∂μ) := by
+    dsimp [S]
+    rw [lintegral_tsum (fun n => (measurable_const.mul (hw n)).aemeasurable)]
+    apply tsum_congr
+    intro n
+    exact lintegral_const_mul _ (hw n)
+  have hbound : 8 * (∫⁻ t, S t ∂μ) ≤
+      (∫⁻ t, mixtureRoot q f t ∂μ)^2 := by
+    calc
+      _ = ∑' n, q n * (8 * (∫⁻ t, w n t ∂μ)) := by
+        rw [hsum, ← ENNReal.tsum_mul_left]
+        apply tsum_congr
+        intro n
+        ac_rfl
+      _ ≤ ∑' n, q n * (∫⁻ t, f n t ∂μ)^2 :=
+        ENNReal.tsum_le_tsum (fun n => mul_le_mul_left' (radialFock_enn_component n) _)
+      _ ≤ _ := countable_mixture_root_bound μ q f hf
+  have hfin : (∫⁻ t, S t ∂μ) ≠ ⊤ := by
+    intro htop
+    rw [htop, ENNReal.mul_top (by norm_num : (8 : ℝ≥0∞) ≠ 0)] at hbound
+    have he : (∫⁻ t, mixtureRoot q f t ∂μ)^2 = ⊤ := top_le_iff.mp hbound
+    exact ENNReal.pow_ne_top hfinite he
+  filter_upwards [ae_lt_top hS hfin] with t ht
+  have h : (∑' n, ENNReal.ofReal |p n * radialWigner n t|) ≠ ⊤ := by
+    have he : (∑' n, ENNReal.ofReal |p n * radialWigner n t|) = S t := by
+      dsimp [S,q,w]
+      apply tsum_congr
+      intro n
+      rw [abs_mul, abs_of_nonneg (hp n), ENNReal.ofReal_mul (hp n)]
+    rw [he]
+    exact ne_of_lt ht
+  change (∑' n, (↑(Real.toNNReal |p n * radialWigner n t|) : ℝ≥0∞)) ≠ ⊤ at h
+  have h' := ENNReal.tsum_coe_ne_top_iff_summable_coe.mp h
+  simpa only [Real.coe_toNNReal _ (abs_nonneg _)] using h'
+
+#print axioms diagonal_series_abs_summable_ae
+
+end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+theorem radialFock_enn_strict (n : ℕ) (hn : 1 ≤ n) :
+    8 * (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal |radialWigner n t|) <
+      (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal (radialHusimiRoot n t))^2 := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  have hW : Integrable (fun t => |radialWigner n t|) μ := by
+    simp_rw [radialWigner_abs]
+    simpa only [Real.norm_eq_abs] using (radialFock_integrable n).norm
+  have hQ : Integrable (radialHusimiRoot n) μ := radialRoot_integrable n
+  have hQpos : 0 ≤ᵐ[μ] radialHusimiRoot n := by
+    filter_upwards [ae_restrict_mem (μ := volume) measurableSet_Ioi] with t ht
+    exact radialHusimiRoot_nonneg n t ht.le
+  have hWpos : 0 ≤ᵐ[μ] (fun t => |radialWigner n t|) :=
+    Filter.Eventually.of_forall (fun t => abs_nonneg _)
+  have h := radialFock_strict n hn
+  rw [← radialHusimi_rhs] at h
+  simp_rw [← radialWigner_abs n] at h
+  have he : (∫ t in Ioi (0 : ℝ), Real.sqrt (radialHusimi n t)) =
+      ∫ t in Ioi (0 : ℝ), radialHusimiRoot n t := by
+    apply setIntegral_congr_fun measurableSet_Ioi
+    intro t ht
+    change Real.sqrt (radialHusimiRoot n t ^ 2) = radialHusimiRoot n t
+    rw [Real.sqrt_sq_eq_abs, abs_of_nonneg (radialHusimiRoot_nonneg n t ht.le)]
+  rw [he] at h
+  have hr : 8 * (∫ t, |radialWigner n t| ∂μ) <
+      (∫ t, radialHusimiRoot n t ∂μ)^2 := by
+    change (∫ t, |radialWigner n t| ∂μ) < (∫ t, radialHusimiRoot n t ∂μ)^2 / 8 at h
+    linarith
+  have hnn := integral_nonneg_of_ae hQpos
+  have hWnn := integral_nonneg_of_ae hWpos
+  have hrpos : 0 < (∫ t, radialHusimiRoot n t ∂μ)^2 := by linarith
+  have h' := (ENNReal.ofReal_lt_ofReal_iff hrpos).2 hr
+  rw [ENNReal.ofReal_mul (by norm_num : (0 : ℝ) ≤ 8),
+    ENNReal.ofReal_pow hnn, ofReal_integral_eq_lintegral_ofReal hW hWpos,
+    ofReal_integral_eq_lintegral_ofReal hQ hQpos] at h'
+  norm_num at h'
+  exact h'
+
+
+theorem diagonal_radial_strict (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n)
+    (n : ℕ) (hn : 1 ≤ n) (hpn : 0 < p n)
+    (hfinite : (∫⁻ t in Ioi (0 : ℝ), diagonalHusimiRoot p t) ≠ ⊤) :
+    8 * (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal |diagonalWigner p t|) <
+      (∫⁻ t in Ioi (0 : ℝ), diagonalHusimiRoot p t)^2 := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  let q : ℕ → ℝ≥0∞ := fun k => ENNReal.ofReal (p k)
+  let f : ℕ → ℝ → ℝ≥0∞ := fun k t => ENNReal.ofReal (radialHusimiRoot k t)
+  let w : ℕ → ℝ → ℝ≥0∞ := fun k t => ENNReal.ofReal |radialWigner k t|
+  let A : ℕ → ℝ≥0∞ := fun k => q k * (8 * (∫⁻ t, w k t ∂μ))
+  let B : ℕ → ℝ≥0∞ := fun k => q k * (∫⁻ t, f k t ∂μ)^2
+  have hf : ∀ k, Measurable (f k) := by
+    intro k
+    dsimp [f, radialHusimiRoot]
+    fun_prop
+  have hw : ∀ k, Measurable (w k) := by
+    intro k
+    dsimp [w, radialWigner, radialFock, laguerre]
+    fun_prop
+  have htriangle (t : ℝ) :
+      ENNReal.ofReal |diagonalWigner p t| ≤ ∑' k, q k * w k t := by
+    unfold diagonalWigner
+    have h := enn_abs_tsum_le (fun k => p k * radialWigner k t)
+    simp_rw [abs_mul, abs_of_nonneg (hp _), ENNReal.ofReal_mul (hp _)] at h
+    exact h
+  have hsum : (∫⁻ t, ∑' k, q k * w k t ∂μ) =
+      ∑' k, q k * (∫⁻ t, w k t ∂μ) := by
+    rw [lintegral_tsum (fun k => (measurable_const.mul (hw k)).aemeasurable)]
+    apply tsum_congr
+    intro k
+    exact lintegral_const_mul _ (hw k)
+  have hle (k : ℕ) : A k ≤ B k :=
+    mul_le_mul_left' (radialFock_enn_component k) _
+  have hlt : A n < B n := by
+    apply ENNReal.mul_lt_mul_left' (by dsimp [q]; simp [hpn]) ENNReal.ofReal_ne_top
+    exact radialFock_enn_strict n hn
+  have hB : (∑' k, B k) ≤ (∫⁻ t, mixtureRoot q f t ∂μ)^2 :=
+    countable_mixture_root_bound μ q f hf
+  have hAf : (∑' k, A k) ≠ ⊤ :=
+    ne_top_of_le_ne_top (ENNReal.pow_ne_top hfinite)
+      (le_trans (ENNReal.tsum_le_tsum hle) hB)
+  change 8 * (∫⁻ t, ENNReal.ofReal |diagonalWigner p t| ∂μ) <
+    (∫⁻ t, mixtureRoot q f t ∂μ)^2
+  calc
+    _ ≤ 8 * (∫⁻ t, ∑' k, q k * w k t ∂μ) :=
+      mul_le_mul_left' (lintegral_mono htriangle) _
+    _ = ∑' k, A k := by
+      rw [hsum, ← ENNReal.tsum_mul_left]
+      apply tsum_congr
+      intro k
+      dsimp [A]
+      ac_rfl
+    _ < ∑' k, B k := ENNReal.tsum_lt_tsum hAf hle hlt
+    _ ≤ _ := hB
+
+#print axioms radialFock_enn_strict
+#print axioms diagonal_radial_strict
+
+end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+theorem planarDiagonalWigner_series (p : ℕ → ℝ) (z : ℂ) :
+    planarDiagonalWigner p z = ∑' n, p n * planarWigner n z := by
+  unfold planarDiagonalWigner diagonalWigner planarWigner
+  simp_rw [div_eq_mul_inv]
+  rw [← tsum_mul_right]
+  apply tsum_congr
+  intro n
+  ring
+
+theorem planarDiagonalHusimiRoot_sq (p : ℕ → ℝ) (z : ℂ) :
+    planarDiagonalHusimiRoot p z ^ 2 =
+      (ENNReal.ofReal Real.pi)⁻¹ *
+        ∑' n, ENNReal.ofReal (p n) *
+          ENNReal.ofReal ((1/2 : ℝ)*Real.exp (-(‖z‖^2)/2)*(‖z‖^2/2)^n/(n.factorial : ℝ)) := by
+  unfold planarDiagonalHusimiRoot
+  rw [mul_pow, ← ENNReal.inv_pow, ← ENNReal.ofReal_pow (Real.sqrt_nonneg Real.pi),
+    Real.sq_sqrt Real.pi_nonneg, diagonalHusimiRoot_formula p _ (sq_nonneg _)]
+
+theorem planar_diagonal_strict (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n)
+    (n : ℕ) (hn : 1 ≤ n) (hpn : 0 < p n)
+    (hfinite : (∫⁻ t in Ioi (0 : ℝ), diagonalHusimiRoot p t) ≠ ⊤) :
+    8 * ENNReal.ofReal Real.pi *
+      (∫⁻ z : ℂ, ENNReal.ofReal |planarDiagonalWigner p z|) <
+      (∫⁻ z : ℂ, planarDiagonalHusimiRoot p z)^2 := by
+  rw [planarDiagonalWigner_lintegral, planarDiagonalHusimiRoot_lintegral,
+    mul_pow, ← ENNReal.ofReal_pow (Real.sqrt_nonneg Real.pi),
+    Real.sq_sqrt Real.pi_nonneg]
+  calc
+    _ = ENNReal.ofReal Real.pi *
+        (8 * (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal |diagonalWigner p t|)) := by ac_rfl
+    _ < _ := ENNReal.mul_lt_mul_left' (by simp [Real.pi_pos])
+      ENNReal.ofReal_ne_top (diagonal_radial_strict p hp n hn hpn hfinite)
+
+#print axioms planarDiagonalWigner_series
+#print axioms planarDiagonalHusimiRoot_sq
+#print axioms planar_diagonal_strict
+
+end F19
