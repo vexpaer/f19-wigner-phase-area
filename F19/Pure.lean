@@ -631,7 +631,9 @@ theorem chiGammaSq_step (k : ℕ) :
   congr 1
   congr 1
   have hk : (0:ℝ) ≤ k := Nat.cast_nonneg k
-  field_simp <;> ring (a : ℝ) (k : ℕ) : ℝ :=
+  field_simp <;> ring
+
+noncomputable def chiGammaNormalized (a : ℝ) (k : ℕ) : ℝ :=
   chiGammaSq k / ((k:ℝ)+1-a)
 
 theorem chiGammaNormalized_tendsto (a : ℝ) (ha : a < 1) :
