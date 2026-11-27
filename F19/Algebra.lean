@@ -273,3 +273,80 @@ theorem fock_comparison_factorial (n : ℕ) (A : ℝ) (hn : 1 ≤ n)
 #print axioms fock_comparison_factorial
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory
+
+theorem integral_cauchy_sq {α : Type*} [MeasurableSpace α] (μ : Measure α)
+    (f g : α → ℝ)
+    (hf : Integrable (fun x => f x ^ 2) μ)
+    (hg : Integrable (fun x => g x ^ 2) μ)
+    (hfg : Integrable (fun x => f x * g x) μ)
+    (hb : 0 < ∫ x, g x ^ 2 ∂μ) :
+    (∫ x, f x * g x ∂μ)^2 ≤
+      (∫ x, f x ^ 2 ∂μ) * (∫ x, g x ^ 2 ∂μ) := by
+  let A := ∫ x, f x ^ 2 ∂μ
+  let B := ∫ x, g x ^ 2 ∂μ
+  let C := ∫ x, f x * g x ∂μ
+  let k := C / B
+  have hb' : 0 < B := hb
+  have hfg' : Integrable (fun x => (2*k)*(f x*g x)) μ := hfg.const_mul _
+  have hgg' : Integrable (fun x => k^2*(g x^2)) μ := hg.const_mul _
+  have he : (∫ x, (f x-k*g x)^2 ∂μ) = A-2*k*C+k^2*B := by
+    calc
+      _ = ∫ x, f x^2 - (2*k)*(f x*g x) + k^2*(g x^2) ∂μ := by
+        apply integral_congr_ae
+        exact Filter.Eventually.of_forall (fun x => by ring)
+      _ = A-2*k*C+k^2*B := by
+        rw [integral_add (hf.sub hfg') hgg', integral_sub hf hfg',
+          integral_const_mul, integral_const_mul]
+  have hnon : 0 ≤ A-2*k*C+k^2*B := by
+    rw [← he]
+    exact integral_nonneg (fun x => sq_nonneg (f x-k*g x))
+  have hk : k*B = C := by
+    dsimp [k]
+    exact div_mul_cancel₀ _ hb'.ne'
+  have hh := mul_nonneg hnon hb'.le
+  have heq : (A-2*k*C+k^2*B)*B = A*B-C^2 := by
+    rw [← hk]
+    ring
+  rw [heq] at hh
+  change C^2 ≤ A*B
+  linarith
+
+theorem optimized_moment_bound (n A a : ℝ) (ha : 0 < a)
+    (hscale : a^4 = 6*momentPoly n/32)
+    (hCS : A^2 ≤ (1/2+momentPoly n/(32*a^4))*(Real.pi*a/(2*Real.sqrt 2))) :
+    A^8 ≤ Real.pi^4 * momentPoly n / 1728 := by
+  have ha4 : 0 < a^4 := pow_pos ha 4
+  have hfrac : momentPoly n / (32*a^4) = 1/6 := by
+    apply (div_eq_iff (by positivity : (32*a^4 : ℝ) ≠ 0)).2
+    linarith only [hscale]
+  have hs : 0 < Real.sqrt (2 : ℝ) := Real.sqrt_pos.2 (by norm_num)
+  have hA : A^2 ≤ Real.pi*a/(3*Real.sqrt 2) := by
+    rw [hfrac] at hCS
+    calc
+      A^2 ≤ (1/2+1/6)*(Real.pi*a/(2*Real.sqrt 2)) := hCS
+      _ = Real.pi*a/(3*Real.sqrt 2) := by field_simp [hs.ne']; <;> ring
+  have hp : (A^2)^4 ≤ (Real.pi*a/(3*Real.sqrt 2))^4 := by
+    have hnon : 0 ≤ A^2 := sq_nonneg _
+    gcongr
+  have hs4 : (Real.sqrt (2 : ℝ))^4 = 4 := by
+    calc
+      _ = ((Real.sqrt (2 : ℝ))^2)^2 := by ring
+      _ = 4 := by rw [Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2)]; norm_num
+  have he : (Real.pi*a/(3*Real.sqrt 2))^4 =
+      Real.pi^4 * momentPoly n / 1728 := by
+    rw [div_pow, mul_pow, mul_pow, hs4, hscale]
+    ring
+  rw [he] at hp
+  calc
+    A^8 = (A^2)^4 := by ring
+    _ ≤ Real.pi^4 * momentPoly n / 1728 := hp
+
+#print axioms integral_cauchy_sq
+#print axioms optimized_moment_bound
+
+end F19
