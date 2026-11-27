@@ -1739,3 +1739,48 @@ theorem diagonal_radial_strict (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n)
 #print axioms diagonal_radial_strict
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+theorem planarDiagonalWigner_series (p : ℕ → ℝ) (z : ℂ) :
+    planarDiagonalWigner p z = ∑' n, p n * planarWigner n z := by
+  unfold planarDiagonalWigner diagonalWigner planarWigner
+  simp_rw [div_eq_mul_inv]
+  rw [← tsum_mul_right]
+  apply tsum_congr
+  intro n
+  ring
+
+theorem planarDiagonalHusimiRoot_sq (p : ℕ → ℝ) (z : ℂ) :
+    planarDiagonalHusimiRoot p z ^ 2 =
+      (ENNReal.ofReal Real.pi)⁻¹ *
+        ∑' n, ENNReal.ofReal (p n) *
+          ENNReal.ofReal ((1/2 : ℝ)*Real.exp (-(‖z‖^2)/2)*(‖z‖^2/2)^n/(n.factorial : ℝ)) := by
+  unfold planarDiagonalHusimiRoot
+  rw [mul_pow, inv_pow, ← ENNReal.ofReal_pow (Real.sqrt_nonneg Real.pi),
+    Real.sq_sqrt Real.pi_nonneg, diagonalHusimiRoot_formula p _ (sq_nonneg _)]
+
+theorem planar_diagonal_strict (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n)
+    (n : ℕ) (hn : 1 ≤ n) (hpn : 0 < p n)
+    (hfinite : (∫⁻ t in Ioi (0 : ℝ), diagonalHusimiRoot p t) ≠ ⊤) :
+    8 * ENNReal.ofReal Real.pi *
+      (∫⁻ z : ℂ, ENNReal.ofReal |planarDiagonalWigner p z|) <
+      (∫⁻ z : ℂ, planarDiagonalHusimiRoot p z)^2 := by
+  rw [planarDiagonalWigner_lintegral, planarDiagonalHusimiRoot_lintegral,
+    mul_pow, ← ENNReal.ofReal_pow (Real.sqrt_nonneg Real.pi),
+    Real.sq_sqrt Real.pi_nonneg]
+  calc
+    _ = ENNReal.ofReal Real.pi *
+        (8 * (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal |diagonalWigner p t|)) := by ac_rfl
+    _ < _ := ENNReal.mul_lt_mul_left' (by simp [Real.pi_pos])
+      ENNReal.ofReal_ne_top (diagonal_radial_strict p hp n hn hpn hfinite)
+
+#print axioms planarDiagonalWigner_series
+#print axioms planarDiagonalHusimiRoot_sq
+#print axioms planar_diagonal_strict
+
+end F19
