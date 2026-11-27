@@ -1,6 +1,7 @@
 
 import F19.Algebra
 import Mathlib.Probability.Distributions.Poisson
+import Mathlib.Analysis.Normed.Group.Tannery
 
 /-!
 # General-pure-state reduction
@@ -1020,5 +1021,122 @@ theorem bernMean_binomial (p : ℝ) (n : ℕ) (f : ℕ → ℝ) :
 
 #print axioms binWeight_step
 #print axioms bernMean_binomial
+
+end F19.Pure
+
+
+namespace F19.Pure
+
+/-- Unnormalized binomial odds weights. Using these rather than the
+probabilities themselves avoids needing a separate exponential limit. -/
+noncomputable def oddsWeight (r : ℝ) (d n k : ℕ) : ℝ :=
+  (n.choose k : ℝ) * (r / ((n:ℝ)+d))^k
+
+theorem oddsWeight_zero (r : ℝ) (d n : ℕ) : oddsWeight r d n 0 = 1 := by
+  simp [oddsWeight]
+
+theorem oddsWeight_nonneg (r : ℝ) (hr : 0 ≤ r) (d n k : ℕ) :
+    0 ≤ oddsWeight r d n k := by
+  unfold oddsWeight
+  positivity
+
+theorem oddsWeight_outside (r : ℝ) (d n k : ℕ) (h : n < k) :
+    oddsWeight r d n k = 0 := by
+  simp [oddsWeight, Nat.choose_eq_zero_of_lt h]
+
+theorem oddsWeight_step (r : ℝ) (d n k : ℕ) :
+    ((k:ℝ)+1)*oddsWeight r d n (k+1) =
+      (((n-k:ℕ):ℝ)* (r/((n:ℝ)+d))) * oddsWeight r d n k := by
+  have h : (n.choose (k+1):ℝ)*((k:ℝ)+1) =
+      (n.choose k:ℝ)*((n-k:ℕ):ℝ) := by
+    exact_mod_cast Nat.choose_succ_right_eq n k
+  unfold oddsWeight
+  rw [pow_succ]
+  calc
+    _ = ((n.choose (k+1):ℝ)*((k:ℝ)+1))*(r/((n:ℝ)+d))^k*(r/((n:ℝ)+d)) := by ring
+    _ = _ := by rw [h]; ring
+
+theorem oddsWeight_bound (r : ℝ) (hr : 0 ≤ r) (d n k : ℕ) :
+    oddsWeight r d n k ≤ r^k/(k.factorial:ℝ) := by
+  induction k with
+  | zero => simp [oddsWeight]
+  | succ k ih =>
+    have hk : 0 < (k:ℝ)+1 := by positivity
+    have hf : 0 < (k.factorial:ℝ) := by positivity
+    have hd : 0 ≤ (n:ℝ)+d := by positivity
+    have hn : ((n-k:ℕ):ℝ) ≤ (n:ℝ)+d := by
+      have h : ((n-k:ℕ):ℝ) ≤ (n:ℝ) := by exact_mod_cast Nat.sub_le n k
+      linarith [Nat.cast_nonneg (α := ℝ) d]
+    have hcoef : ((n-k:ℕ):ℝ)*(r/((n:ℝ)+d)) ≤ r := by
+      rcases eq_or_lt_of_le hd with hzero | hpos
+      · rw [← hzero, div_zero, mul_zero]; exact hr
+      · rw [mul_div_assoc]
+        apply (div_le_iff₀ hpos).2
+        exact mul_le_mul_of_nonneg_right hn hr
+    have he := oddsWeight_step r d n k
+    rw [Nat.factorial_succ, Nat.cast_mul, Nat.cast_succ, pow_succ]
+    apply (le_div_iff₀ (mul_pos hk hf)).2
+    calc
+      _ = (((n-k:ℕ):ℝ)*(r/((n:ℝ)+d)))*oddsWeight r d n k*(k.factorial:ℝ) := by
+        rw [← he]; ring
+      _ ≤ r*oddsWeight r d n k*(k.factorial:ℝ) :=
+        mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right hcoef
+          (oddsWeight_nonneg r hr d n k)) hf.le
+      _ ≤ r*(r^k/(k.factorial:ℝ))*(k.factorial:ℝ) :=
+        mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left ih hr) hf.le
+      _ = _ := by field_simp [hf.ne'] <;> ring
+
+theorem oddsCoefficient_tendsto (r : ℝ) (d k : ℕ) :
+    Tendsto (fun n : ℕ => ((n-k:ℕ):ℝ)*(r/((n:ℝ)+d))) atTop (𝓝 r) := by
+  have ht : Tendsto (fun n : ℕ => (n:ℝ)+d) atTop atTop :=
+    tendsto_atTop_add_const_right atTop (d:ℝ) tendsto_natCast_atTop_atTop
+  have hi := tendsto_inv_atTop_zero.comp ht
+  have hl : Tendsto (fun n : ℕ => r-r*((k:ℝ)+d)*((n:ℝ)+d)⁻¹) atTop (𝓝 r) := by
+    simpa using ((tendsto_const_nhds : Tendsto (fun _ : ℕ => r) atTop (𝓝 r)).sub
+      (hi.const_mul (r*((k:ℝ)+d))))
+  apply hl.congr'
+  filter_upwards [eventually_ge_atTop (k+1)] with n hn
+  have hkn : k ≤ n := by omega
+  have hnpos : (0:ℝ) < n := by exact_mod_cast (show 0 < n by omega)
+  have hd : 0 < (n:ℝ)+d := add_pos_of_pos_of_nonneg hnpos (Nat.cast_nonneg d)
+  rw [Nat.cast_sub hkn]
+  field_simp [hd.ne'] <;> ring
+
+theorem oddsWeight_tendsto (r : ℝ) (d k : ℕ) :
+    Tendsto (fun n : ℕ => oddsWeight r d n k) atTop (𝓝 (r^k/(k.factorial:ℝ))) := by
+  induction k with
+  | zero => simpa [oddsWeight] using
+      (tendsto_const_nhds : Tendsto (fun _ : ℕ => (1:ℝ)) atTop (𝓝 1))
+  | succ k ih =>
+    have hk : (0:ℝ) < (k:ℝ)+1 := by positivity
+    have he (n : ℕ) : oddsWeight r d n (k+1) =
+        (((n-k:ℕ):ℝ)*(r/((n:ℝ)+d)))*oddsWeight r d n k/((k:ℝ)+1) := by
+      apply (eq_div_iff hk.ne').2
+      rw [mul_comm, oddsWeight_step]
+    have hl := ((oddsCoefficient_tendsto r d k).mul ih).div_const ((k:ℝ)+1)
+    simp_rw [he]
+    convert hl using 1
+    rw [Nat.factorial_succ, Nat.cast_mul, Nat.cast_succ, pow_succ]
+    have hf : (0:ℝ) < (k.factorial:ℝ) := by positivity
+    field_simp [hk.ne', hf.ne'] <;> ring
+
+/-- Convergence of weighted odds expectations under a summable
+factorial majorant. The test function need not be bounded. -/
+theorem odds_tsum_tendsto (r : ℝ) (hr : 0 ≤ r) (d : ℕ) (f : ℕ → ℝ)
+    (hs : Summable (fun k => (r^k/(k.factorial:ℝ))*‖f k‖)) :
+    Tendsto (fun n : ℕ => ∑' k, oddsWeight r d n k * f k) atTop
+      (𝓝 (∑' k, (r^k/(k.factorial:ℝ))*f k)) := by
+  apply tendsto_tsum_of_dominated_convergence hs
+  · intro k
+    exact (oddsWeight_tendsto r d k).mul_const (f k)
+  · exact Eventually.of_forall (fun n k => by
+      rw [norm_mul, Real.norm_of_nonneg (oddsWeight_nonneg r hr d n k)]
+      exact mul_le_mul_of_nonneg_right (oddsWeight_bound r hr d n k) (norm_nonneg _))
+
+#print axioms oddsWeight_step
+#print axioms oddsWeight_bound
+#print axioms oddsCoefficient_tendsto
+#print axioms oddsWeight_tendsto
+#print axioms odds_tsum_tendsto
 
 end F19.Pure
