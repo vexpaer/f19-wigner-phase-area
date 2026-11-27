@@ -1,0 +1,156 @@
+# General pure-state work: finite-polynomial reduction and vacuum rays
+
+**Research notes, not a solution of F19.** The phase-invariant theorem is frozen separately. These new arguments are mathematical notes, not yet Lean formalized or independently reviewed.
+
+## 1. A reduction that avoids a questionable sharp Fock truncation
+
+Let \(F(z)=\sum_{n\ge0} c_n z^n/\sqrt{n!}\) be the Bargmann function of a normalized pure state. In coherent amplitude coordinates put
+\[
+d\gamma(z)=(2\pi)^{-1}e^{-|z|^2/2}d^2z,\quad H(F)=\int |F(z)|\,d\gamma(z).
+\]
+In the quadrature normalization of F19 the right side is exactly \(H(F)^2\).
+
+If \(H(F)=\infty\), the extended inequality is automatic. Otherwise take the Fejér polynomials
+\[
+F_N(z)=\sum_{n=0}^N (1-n/(N+1))\,c_n z^n/\sqrt{n!}.
+\]
+They are the averages of \(F(e^{i\theta}z)\) against the nonnegative normalized Fejér kernel \(K_N(\theta)\). The rotation action is continuous in \(L^1(d\gamma)\): approximate \(F\) by compactly supported continuous functions, use uniform continuity there and the isometric action of rotations. The Fejér approximate identity therefore yields \(\|F_N-F\|_{L^1(d\gamma)}\to0\). In particular \(H(F_N)\to H(F)\). Dominated convergence in the square-summable coefficients gives Hilbert norm convergence of their corresponding vectors.
+
+Normalize each nonzero approximant. Their pure-state density operators converge in trace norm. Since displaced parity is bounded, the Wigner functions converge pointwise; Fatou gives \(\|W_\psi\|_1\le\liminf_N\|W_{\psi_N}\|_1\). Homogeneity and the convergence of \(H\) now give the inequality for \(\psi\) if it holds for every finite Fock polynomial. This reduction does not establish equality rigidity in the infinite-dimensional limit.
+
+## 2. Strict inequality along every fixed finite Fock ray from vacuum
+
+Fix a nonzero finite superposition \(\phi=\sum_{n=1}^d b_n|n\rangle\) orthogonal to vacuum, and set
+\[
+|\psi_\epsilon\rangle=(|0\rangle+\epsilon|\phi\rangle)/\sqrt{1+\epsilon^2 S},
+\quad S=\sum_{n=1}^d |b_n|^2,\quad \epsilon\in\mathbb R.
+\]
+Claim: for each fixed \(\phi\), there is \(\epsilon_0(\phi)>0\) such that the sharp F19 inequality is strict for \(0<|\epsilon|<\epsilon_0(\phi)\).
+
+### Husimi expansion
+
+Put \(P(z)=\sum_{n=1}^d b_n z^n/\sqrt{n!}\) and take \(Z\sim\gamma\). Orthogonality of the angular harmonics gives \(E P=E P^2=0\), \(E|P|^2=\sum_n2^n|b_n|^2\). The local expansion
+\[
+|1+u|=1+\operatorname{Re} u+\tfrac12(\operatorname{Im}u)^2+O(|u|^3)
+\]
+therefore yields
+\[
+H(F_\epsilon)^2
+=1+\epsilon^2\sum_{n=1}^d(2^{n-1}-1)|b_n|^2+O(|\epsilon|^3).
+\]
+To justify this under the integral, restrict to \(|Z|\le |\epsilon|^{-1/(2d)}\), where \(|\epsilon P(Z)|\le C|\epsilon|^{1/2}\); the Taylor remainder is bounded by \(C|\epsilon|^3 E|P|^3\), while the omitted polynomially weighted Gaussian tail is smaller than every power of \(|\epsilon|\). The displayed coefficient is positive whenever any \(b_n\ne0\) for \(n\ge2\).
+
+The exceptional direction is \(\phi=b_1|1\rangle\). Write \(\delta=\epsilon |b_1|\). Rotational invariance and the binomial series give
+\[
+E|1+\delta Z|=1+\delta^2/2+\delta^4/8+O(\delta^6).
+\]
+Indeed the circle-average coefficients are \(\binom{1/2}{k}^2\), and \(E|Z|^2=2,\ E|Z|^4=8\). Use the same cutoff and a sixth-order remainder (or expand through fifth order, whose angular average is zero). Thus
+\[
+H(F_\epsilon)^2=(E|1+\delta Z|)^2/(1+\delta^2)
+=1+\delta^4/2+O(\delta^6).
+\]
+
+### Wigner negativity is beyond all algebraic orders along these rays
+
+For finite Fock support, \(W_{\psi_\epsilon}(r)=e^{-|r|^2}R_\epsilon(r)/(\pi(1+\epsilon^2S))\) for a real polynomial
+\(R_\epsilon=1+\epsilon R_1+\epsilon^2 R_2\), with \(R_1\) of degree at most \(d\) and \(R_2\) of degree at most \(2d\). This follows by expanding displaced-parity matrix elements in the Fock basis. On \(|r|\le |\epsilon|^{-1/(2d)}\), the two perturbation terms are \(O(|\epsilon|^{1/2})\) and \(O(|\epsilon|)\) uniformly, so the Wigner function is nonnegative there for small enough \(|\epsilon|\). Outside that disk its absolute integral is bounded by a polynomially weighted Gaussian tail, \(o(|\epsilon|^k)\) for every fixed \(k>0\). Normalization implies
+\[
+\|W_{\psi_\epsilon}\|_1=1+2\int(-W_{\psi_\epsilon})_+ =1+o(|\epsilon|^k).
+\]
+Comparing with the strictly positive quadratic or quartic Husimi gap proves the raywise claim. Displacements preserve the inequality, so the same statement holds for the displaced rays.
+
+**Limitations:** the threshold depends on the direction and cutoff. This is not a uniform neighborhood in the full Hilbert or modulation-space topology; it does not prove the general local-maximizer question posed in the preprint. Nor does it prove the inequality at arbitrary finite superposition amplitudes.
+
+## 3. Numerical diagnostics
+
+Run python pure_state/verify_pure.py (NumPy and SciPy). Uses Gauss–Laguerre radial quadrature and periodic angular quadrature with all cross-Fock terms. The fixed seed sample of 100 complex random normalized states per cutoff d=1,2,4,8 gave refined maximum ratios A/H² of 0.9999564, 0.9862145, 0.9305723, 0.8032609. These are sample maxima, not upper bounds or certificates. The qubit vacuum-ray test at epsilon=.05 gives gap 3.12505e-6, consistent with the quartic expansion. Random sampling near the vacuum and high-degree perturbations should be supplemented by analytic bounds or certified numerical methods.
+
+## 4. Remaining research problem
+
+The finite-polynomial inequality still needs to be proved with a constant independent of degree. The sharp estimate is quadratic in one and the same state; the existing triangle-inequality argument in Gagatsos, arXiv:2611.30969v1, loses a factor two. A generic bound for arbitrary two-mode wavefunctions cannot recover it. Do not present a bound with the weak constant as the solution. Investigate uniform estimates retaining the phases of the cross-Fock terms and seek adversarial counterexamples.
+
+
+## 5. Exact Gaussian polynomial reformulation
+
+Let \(P(z)=\sum_{m=0}^N c_m z^m/\sqrt{m!}\) and \(Z\) have density \(e^{-|z|^2/2}/(2\pi)\) in the complex plane. Expanding the normal-ordered displacement matrix element gives the cross polynomial
+\[
+K_{mn}(z)=\sum_{k=0}^{\min(m,n)}
+(-1)^k k!\binom mk\binom nk
+\frac{z^{m-k}\overline z^{\,n-k}}{\sqrt{m!n!}}.
+\]
+Consequently (using the conjugate quadrature coordinate \(z=\sqrt2(x-ip)\)), the Wigner polynomial of a pure state is
+\[
+\sum_{m,n}c_m\overline{c_n}K_{mn}(z)
+=\sum_{k=0}^N\frac{(-1)^k}{k!}|P^{(k)}(z)|^2.
+\]
+Changing variables in the absolute Wigner integral gives the following exact finite-polynomial target, with no normalization requirement on \(P\):
+\[
+\boxed{\mathbb E\left|\sum_{k=0}^N\frac{(-1)^k}{k!}|P^{(k)}(Z)|^2\right|\le(\mathbb E|P(Z)|)^2.}
+\]
+This is the same sharp conjecture on finite Fock states, not an established inequality. The Lean module expresses jets via explicit binomial coefficients to avoid assuming derivative identities. All terms, including their interference, are retained.
+
+For \(P(z)=a+bz\), \(b\ne0\), rotational invariance and homogeneity reduce the conjecture to
+\[
+\mathbb E|R^2-1|\le(\mathbb ER)^2,\qquad R=|Z+s|,\quad s=|a/b|\ge0.
+\]
+Since \(\mathbb ER^2=s^2+2\), this is equivalent to
+\[
+\operatorname{Var}(R)+2\mathbb E(1-R^2)_+\le1.
+\]
+Gaussian Poincaré alone gives only \(\operatorname{Var}(R)\le1\). A quantitative deficit is necessary. The second-order spectral gap gives \(\operatorname{Var}(R)\le(1+|\mathbb E\nabla R|^2)/2\), because \(|\nabla R|=1\) almost everywhere. Thus a sufficient (still unproved) scalar inequality is \(4\mathbb E(1-R^2)_+\le1-|\mathbb E\nabla R|^2\). Numerical quadrature at s=0,0.25,...,5 yielded positive gaps, but no universal estimate has been certified.
+
+The first priority is the exact polynomial reformulation and finite approximation; the remaining sharp Gaussian inequality must not be introduced as an axiom or silently assumed.
+
+
+## 6. Analytic degree-one proof via Poisson–Gamma variance decomposition (new)
+
+This is a mathematical proof candidate for every \(P(z)=a+bz\), not yet an end-to-end Lean theorem. Let \(b\ne0\), \(s=|a/b|\), \(\lambda=s^2/2\), \(R=|Z+s|\), with \(Z\) the two-dimensional standard Gaussian from Section 5. Let \(K\sim\operatorname{Pois}(\lambda)\); conditional on \(K=k\), let \(R^2/2\sim\operatorname{Gamma}(k+1,1)\). This mixture follows, for instance, by expanding the noncentral chi-square Laplace transform:
+\[
+E e^{-uR^2/2}=(1+u)^{-1}e^{-\lambda u/(1+u)}
+=e^{-\lambda}\sum_{k\ge0}\frac{\lambda^k}{k!}(1+u)^{-(k+1)}.
+\]
+Uniqueness of Laplace transforms identifies the laws.
+
+Write \(h_k=\sqrt2\,\Gamma(k+3/2)/k!\), \(v_k=2(k+1)-h_k^2\), and \(d_k=E[(1-R^2)_+\mid K=k]\). We prove \(1/3\le v_k\le1/2\) below. The recurrence \(h_{k+1}=h_k(1+1/[2(k+1)])\) gives
+\[
+(h_{k+1}-h_k)^2=\frac{1}{2(k+1)}-\frac{v_k}{4(k+1)^2}.
+\]
+The Poisson Poincare inequality \(\operatorname{Var}(f(K))\le\lambda E[(f(K+1)-f(K))^2]\) applies to \(h\), since its squared growth is at most linear. For completeness it follows by Efron–Stein on \(B_M\sim\operatorname{Bin}(M,\lambda/M)\):
+\(\operatorname{Var}(f(B_M))\le M p(1-p)E[(f(B_{M-1}+1)-f(B_{M-1}))^2]\), then let \(M\to\infty\). For \(f=h\), the differences are bounded and the linear growth of \(h^2\), together with the uniformly bounded binomial second moments, justifies the limit.
+
+The law of total variance therefore implies
+\[
+\begin{aligned}
+\operatorname{Var}(R)
+&=E v_K+\operatorname{Var}(h_K)\\
+&\le\tfrac12+\lambda E[1/(2(K+1))-v_K/(4(K+1)^2)]\\
+&=1-\tfrac12\Pr(K=0)-E[\mathbf1_{K\ge1}v_{K-1}/(4K)].
+\end{aligned}
+\]
+The last step uses the exact Poisson shift \( \lambda E g(K)=E[K g(K-1)\mathbf1_{K\ge1}]\), valid also at \(\lambda=0\). In particular
+\[
+1-\operatorname{Var}(R)\ge E[\tfrac12\mathbf1_{K=0}+\tfrac1{12K}\mathbf1_{K\ge1}].
+\]
+
+On the other hand,
+\[
+2d_k=\frac{2}{k!}\int_0^{1/2}(1-2u)e^{-u}u^k\,du
+<\frac{2^{-k}}{(k+1)(k+2)k!}
+\]
+(strict because \(e^{-u}<1\) for \(0<u<1/2\)). The latter bound is \(1/2\) at \(k=0\); for \(k\ge1\) it is at most \(1/(12k)\). Indeed, \(2^k\ge2\), \(k!\ge1\), and \((k+1)(k+2)\ge6k\) since \((k-1)(k-2)\ge0\) for every positive integer \(k\). Hence \(2E d_K<1-\operatorname{Var}(R)\). Since \(ER^2=s^2+2\), this is exactly
+\[
+E|R^2-1|<(ER)^2.
+\]
+The constant polynomial case \(b=0\) has equality. Thus all vacuum–one-photon superpositions satisfy the sharp conjecture, strictly unless vacuum.
+
+### Gamma ratio bounds (no Stirling required)
+
+For integer \(t=k+1\ge1\), set \(G(t)=\Gamma(t+1/2)/\Gamma(t)\). Gamma log-convexity and recurrence give
+\(t^2/(t+1/2)\le G(t)^2\le t\).
+In particular \(G(t)^2/t\to1\). Also \(G(t+1)^2/G(t)^2=(t+1/2)^2/t^2\). For \(a=1/4\),
+\[
+(t+1/2)^2(t-a)-t^2(t+1-a)=-1/16,
+\]
+so \(G(t)^2/(t-1/4)\) decreases to 1. For \(a=1/6\), the same difference is \(t/12-1/24>0\), so \(G(t)^2/(t-1/6)\) increases to 1. Thus \(t-1/4\le G(t)^2\le t-1/6\), or \(1/3\le v_k\le1/2\), as claimed.
+
+This argument proves the degree-one case mathematically, conditional only on standard probability results whose proofs are sketched above. Formalization tasks: gamma bounds, integer coefficient comparison, elementary integral, Poisson Poincare, shift identity, distribution identification and variance decomposition. Do not describe this as a solution of degree two or arbitrary finite degree; the Poisson–Gamma radial mixture relies on the linear polynomial.
