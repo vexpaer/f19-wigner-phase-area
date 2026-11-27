@@ -344,3 +344,120 @@ theorem qubitWignerPoly_negative_iff (a b x y : ℝ) (hb : b ≠ 0) :
 #print axioms qubitWignerPoly_negative_iff
 
 end F19.Pure
+
+
+namespace F19.Pure
+
+/-- The kth normalized polynomial jet (the kth derivative divided by k!).
+The explicit formula avoids any assumption about differentiability. -/
+noncomputable def jetTerm (c : ℕ → ℂ) (m k : ℕ) (z : ℂ) : ℂ :=
+  c m * ((m.choose k : ℝ) / Real.sqrt (m.factorial : ℝ) : ℝ) * z^(m-k)
+
+noncomputable def bargmannJet (N k : ℕ) (c : ℕ → ℂ) (z : ℂ) : ℂ :=
+  ∑ m ∈ Finset.range (N+1), jetTerm c m k z
+
+noncomputable def jetWeight (k : ℕ) : ℝ := (-1 : ℝ)^k * k.factorial
+
+theorem jetTerm_star (c : ℕ → ℂ) (m k : ℕ) (z : ℂ) :
+    star (jetTerm c m k z) =
+      star (c m) * ((m.choose k : ℝ) / Real.sqrt (m.factorial : ℝ) : ℝ) *
+        (star z)^(m-k) := by
+  unfold jetTerm
+  have h : star (((m.choose k : ℝ) / Real.sqrt (m.factorial : ℝ) : ℝ) : ℂ) =
+      (((m.choose k : ℝ) / Real.sqrt (m.factorial : ℝ) : ℝ) : ℂ) := by
+    rw [Complex.star_def, Complex.conj_ofReal]
+  simp only [star_mul', star_pow, h]
+
+theorem crossFockKernel_range (N m n : ℕ) (hm : m ≤ N) (hn : n ≤ N) (z : ℂ) :
+    crossFockKernel m n z = ∑ k ∈ Finset.range (N+1),
+      (crossFockCoeff m n k : ℂ) * z^(m-k) * (star z)^(n-k) := by
+  unfold crossFockKernel
+  apply Finset.sum_subset
+  · apply Finset.range_subset_range.mpr
+    omega
+  · intro k hk hnot
+    have hlt : min m n < k := by
+      simp only [Finset.mem_range, not_lt] at hnot
+      omega
+    have hzero : m.choose k = 0 ∨ n.choose k = 0 := by
+      by_cases h : m ≤ n
+      · left
+        rw [min_eq_left h] at hlt
+        exact Nat.choose_eq_zero_of_lt hlt
+      · right
+        rw [min_eq_right (by omega)] at hlt
+        exact Nat.choose_eq_zero_of_lt hlt
+    rcases hzero with h | h <;> simp [crossFockCoeff, h]
+
+theorem jet_cross_term (c : ℕ → ℂ) (m n k : ℕ) (z : ℂ) :
+    c m * star (c n) *
+      ((crossFockCoeff m n k : ℂ) * z^(m-k) * (star z)^(n-k)) =
+      (jetWeight k : ℂ) * (jetTerm c m k z * star (jetTerm c n k z)) := by
+  rw [jetTerm_star]
+  unfold crossFockCoeff jetWeight jetTerm
+  push_cast
+  ring
+
+/-- All interference terms can be regrouped into a single alternating
+sum of squared polynomial jets. This is an exact finite-dimensional
+identity, not an estimate using the triangle inequality. -/
+theorem finiteWigner_jet_identity (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
+    finiteWignerPolynomial N c z =
+      ∑ k ∈ Finset.range (N+1),
+        (jetWeight k : ℂ) * (bargmannJet N k c z * star (bargmannJet N k c z)) := by
+  classical
+  let S := Finset.range (N+1)
+  calc
+    finiteWignerPolynomial N c z =
+        ∑ m ∈ S, ∑ n ∈ S, ∑ k ∈ S,
+          (jetWeight k : ℂ) * (jetTerm c m k z * star (jetTerm c n k z)) := by
+      unfold finiteWignerPolynomial
+      apply Finset.sum_congr rfl
+      intro m hm
+      apply Finset.sum_congr rfl
+      intro n hn
+      rw [crossFockKernel_range N m n (by simpa [S] using hm) (by simpa [S] using hn),
+        Finset.mul_sum]
+      apply Finset.sum_congr rfl
+      intro k hk
+      exact jet_cross_term c m n k z
+    _ = ∑ k ∈ S, ∑ m ∈ S, ∑ n ∈ S,
+          (jetWeight k : ℂ) * (jetTerm c m k z * star (jetTerm c n k z)) := by
+      calc
+        _ = ∑ m ∈ S, ∑ k ∈ S, ∑ n ∈ S,
+            (jetWeight k : ℂ) * (jetTerm c m k z * star (jetTerm c n k z)) := by
+          apply Finset.sum_congr rfl
+          intro m hm
+          rw [Finset.sum_comm]
+        _ = _ := Finset.sum_comm
+    _ = _ := by
+      unfold bargmannJet
+      apply Finset.sum_congr rfl
+      intro k hk
+      simp only [star_sum, Finset.mul_sum, Finset.sum_mul]
+      apply Finset.sum_congr rfl
+      intro m hm
+      apply Finset.sum_congr rfl
+      intro n hn
+      ring
+
+/-- Real-valued alternating jet norm formula. -/
+noncomputable def jetAlternating (N : ℕ) (c : ℕ → ℂ) (z : ℂ) : ℝ :=
+  ∑ k ∈ Finset.range (N+1), jetWeight k * ‖bargmannJet N k c z‖^2
+
+theorem finiteWigner_jet_real (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
+    finiteWignerPolynomial N c z = (jetAlternating N c z : ℂ) := by
+  rw [finiteWigner_jet_identity]
+  unfold jetAlternating
+  push_cast
+  apply Finset.sum_congr rfl
+  intro k hk
+  congr 1
+  rw [Complex.star_def, Complex.mul_conj, Complex.sq_norm]
+
+#print axioms crossFockKernel_range
+#print axioms jet_cross_term
+#print axioms finiteWigner_jet_identity
+#print axioms finiteWigner_jet_real
+
+end F19.Pure
