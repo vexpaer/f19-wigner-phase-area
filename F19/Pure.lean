@@ -662,7 +662,7 @@ theorem chiGammaNormalized_tendsto (a : ℝ) (ha : a < 1) :
     change (1:ℝ)/((1+(1/2:ℝ)*(t k)⁻¹)*(1-a*(t k)⁻¹)) ≤ chiGammaNormalized a k
     have he : (1:ℝ)/((1+(1/2:ℝ)*(t k)⁻¹)*(1-a*(t k)⁻¹)) =
         (t k)^2/(t k+1/2)/(t k-a) := by
-      field_simp [ht0.ne', hta.ne', show t k+1/2 ≠ 0 by linarith only [ht0]]
+      field_simp [ht0.ne', hta.ne', ne_of_gt (add_pos ht0 (by norm_num : (0:ℝ)<1/2))]
       <;> ring
     rw [he]
     exact div_le_div_of_nonneg_right (chiGammaSq_lower k) hta.le
@@ -682,7 +682,7 @@ theorem chiGammaNormalized_quarter_antitone : Antitone (chiGammaNormalized (1/4)
   let t : ℝ := (k:ℝ)+1
   have ht : 1 ≤ t := by dsimp [t]; linarith [Nat.cast_nonneg (α := ℝ) k]
   have h0 : 0 < t := by linarith
-  have h1 : 0 < t-1/4 := by linarith
+  have h1 : 0 < t-1/4 := sub_pos.mpr (lt_of_lt_of_le (by norm_num : (1/4:ℝ)<1) ht)
   have h2 : 0 < t+1-1/4 := by linarith
   unfold chiGammaNormalized
   rw [chiGammaSq_step]
@@ -704,7 +704,7 @@ theorem chiGammaNormalized_sixth_monotone : Monotone (chiGammaNormalized (1/6)) 
   let t : ℝ := (k:ℝ)+1
   have ht : 1 ≤ t := by dsimp [t]; linarith [Nat.cast_nonneg (α := ℝ) k]
   have h0 : 0 < t := by linarith
-  have h1 : 0 < t-1/6 := by linarith
+  have h1 : 0 < t-1/6 := sub_pos.mpr (lt_of_lt_of_le (by norm_num : (1/6:ℝ)<1) ht)
   have h2 : 0 < t+1-1/6 := by linarith
   unfold chiGammaNormalized
   rw [chiGammaSq_step]
@@ -997,7 +997,7 @@ theorem bernMean_binomial (p : ℝ) (n : ℕ) (f : ℕ → ℝ) :
   | zero => simp [bernMean, binWeight]
   | succ n ih =>
     rw [bernMean, ih, ih]
-    rw [Finset.sum_range_succ']
+    rw [Finset.sum_range_succ' (fun k => binWeight p (n+1) k * f k)]
     have hz : binWeight p (n+1) 0 = (1-p)*binWeight p n 0 := by
       rw [binWeight_zero, binWeight_zero, pow_succ]
       ring
