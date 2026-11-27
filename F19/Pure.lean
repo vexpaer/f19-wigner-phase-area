@@ -747,3 +747,100 @@ theorem chi_variance_bounds (k : ℕ) :
 #print axioms chi_variance_bounds
 
 end F19.Pure
+
+
+namespace F19.Pure
+
+/-- Binomial expectation, constructed by repeated Bernoulli convolution.
+This definition is finite and requires no probability-space axioms. -/
+def bernMean (p : ℝ) : ℕ → (ℕ → ℝ) → ℝ
+  | 0, f => f 0
+  | n+1, f => (1-p)*bernMean p n f + p*bernMean p n (fun k => f (k+1))
+
+theorem bernMean_add (p : ℝ) (n : ℕ) (f g : ℕ → ℝ) :
+    bernMean p n (fun k => f k+g k) = bernMean p n f + bernMean p n g := by
+  induction n generalizing f g with
+  | zero => rfl
+  | succ n ih =>
+    simp only [bernMean, ih]
+    ring
+
+theorem bernMean_sub (p : ℝ) (n : ℕ) (f g : ℕ → ℝ) :
+    bernMean p n (fun k => f k-g k) = bernMean p n f - bernMean p n g := by
+  induction n generalizing f g with
+  | zero => rfl
+  | succ n ih =>
+    simp only [bernMean, ih]
+    ring
+
+theorem bernMean_mono (p : ℝ) (hp : 0 ≤ p) (hp' : p ≤ 1)
+    (n : ℕ) (f g : ℕ → ℝ) (h : ∀ k, f k ≤ g k) :
+    bernMean p n f ≤ bernMean p n g := by
+  induction n generalizing f g with
+  | zero => exact h 0
+  | succ n ih =>
+    simp only [bernMean]
+    exact add_le_add (mul_le_mul_of_nonneg_left (ih f g h) (sub_nonneg.mpr hp'))
+      (mul_le_mul_of_nonneg_left (ih _ _ (fun k => h (k+1))) hp)
+
+theorem bernMean_jensen_square (p : ℝ) (hp : 0 ≤ p) (hp' : p ≤ 1)
+    (n : ℕ) (f : ℕ → ℝ) :
+    (bernMean p n f)^2 ≤ bernMean p n (fun k => (f k)^2) := by
+  induction n generalizing f with
+  | zero => rfl
+  | succ n ih =>
+    simp only [bernMean]
+    have h := add_le_add
+      (mul_le_mul_of_nonneg_left (ih f) (sub_nonneg.mpr hp'))
+      (mul_le_mul_of_nonneg_left (ih (fun k => f (k+1))) hp)
+    have hpos : 0 ≤ p*(1-p)*(bernMean p n f-bernMean p n (fun k => f (k+1)))^2 :=
+      mul_nonneg (mul_nonneg hp (sub_nonneg.mpr hp')) (sq_nonneg _)
+    nlinarith only [h, hpos]
+
+def bernVar (p : ℝ) (n : ℕ) (f : ℕ → ℝ) : ℝ :=
+  bernMean p n (fun k => (f k)^2) - (bernMean p n f)^2
+
+def deltaSq (f : ℕ → ℝ) (k : ℕ) : ℝ := (f (k+1)-f k)^2
+
+theorem bernVar_succ (p : ℝ) (n : ℕ) (f : ℕ → ℝ) :
+    bernVar p (n+1) f =
+      (1-p)*bernVar p n f + p*bernVar p n (fun k => f (k+1)) +
+      p*(1-p)*(bernMean p n (fun k => f (k+1))-bernMean p n f)^2 := by
+  unfold bernVar
+  simp only [bernMean]
+  ring
+
+/-- Finite binomial Poincare inequality, the tensorization step for a
+Poisson Poincare proof by the law of small numbers. -/
+theorem bernVar_poincare (p : ℝ) (hp : 0 ≤ p) (hp' : p ≤ 1)
+    (n : ℕ) (f : ℕ → ℝ) :
+    bernVar p (n+1) f ≤ ((n:ℝ)+1)*p*(1-p)*bernMean p n (deltaSq f) := by
+  have hpq : 0 ≤ p*(1-p) := mul_nonneg hp (sub_nonneg.mpr hp')
+  induction n generalizing f with
+  | zero =>
+    rw [bernVar_succ]
+    simp [bernVar, bernMean, deltaSq]
+    <;> ring_nf
+    <;> linarith
+  | succ n ih =>
+    rw [bernVar_succ]
+    have h1 := mul_le_mul_of_nonneg_left (ih f) (sub_nonneg.mpr hp')
+    have h2 := mul_le_mul_of_nonneg_left (ih (fun k => f (k+1))) hp
+    have hj := bernMean_jensen_square p hp hp' (n+1) (fun k => f (k+1)-f k)
+    rw [bernMean_sub] at hj
+    have hj' : (bernMean p (n+1) (fun k => f (k+1))-bernMean p (n+1) f)^2 ≤
+        bernMean p (n+1) (deltaSq f) := hj
+    have h3 := mul_le_mul_of_nonneg_left hj' hpq
+    have hshift : deltaSq (fun k => f (k+1)) = (fun k => deltaSq f (k+1)) := rfl
+    rw [hshift] at h2
+    have he : bernMean p (n+1) (deltaSq f) =
+      (1-p)*bernMean p n (deltaSq f) + p*bernMean p n (fun k => deltaSq f (k+1)) := rfl
+    push_cast
+    rw [he] at h3 ⊢
+    nlinarith only [h1, h2, h3]
+
+#print axioms bernMean_jensen_square
+#print axioms bernVar_succ
+#print axioms bernVar_poincare
+
+end F19.Pure
