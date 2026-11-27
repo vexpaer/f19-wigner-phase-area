@@ -68,3 +68,35 @@ Run python pure_state/verify_pure.py (NumPy and SciPy). Uses Gauss–Laguerre ra
 ## 4. Remaining research problem
 
 The finite-polynomial inequality still needs to be proved with a constant independent of degree. The sharp estimate is quadratic in one and the same state; the existing triangle-inequality argument in Gagatsos, arXiv:2611.30969v1, loses a factor two. A generic bound for arbitrary two-mode wavefunctions cannot recover it. Do not present a bound with the weak constant as the solution. Investigate uniform estimates retaining the phases of the cross-Fock terms and seek adversarial counterexamples.
+
+
+## 5. Exact Gaussian polynomial reformulation
+
+Let \(P(z)=\sum_{m=0}^N c_m z^m/\sqrt{m!}\) and \(Z\) have density \(e^{-|z|^2/2}/(2\pi)\) in the complex plane. Expanding the normal-ordered displacement matrix element gives the cross polynomial
+\[
+K_{mn}(z)=\sum_{k=0}^{\min(m,n)}
+(-1)^k k!\binom mk\binom nk
+\frac{z^{m-k}\overline z^{\,n-k}}{\sqrt{m!n!}}.
+\]
+Consequently (using the conjugate quadrature coordinate \(z=\sqrt2(x-ip)\)), the Wigner polynomial of a pure state is
+\[
+\sum_{m,n}c_m\overline{c_n}K_{mn}(z)
+=\sum_{k=0}^N\frac{(-1)^k}{k!}|P^{(k)}(z)|^2.
+\]
+Changing variables in the absolute Wigner integral gives the following exact finite-polynomial target, with no normalization requirement on \(P\):
+\[
+\boxed{\mathbb E\left|\sum_{k=0}^N\frac{(-1)^k}{k!}|P^{(k)}(Z)|^2\right|\le(\mathbb E|P(Z)|)^2.}
+\]
+This is the same sharp conjecture on finite Fock states, not an established inequality. The Lean module expresses jets via explicit binomial coefficients to avoid assuming derivative identities. All terms, including their interference, are retained.
+
+For \(P(z)=a+bz\), \(b\ne0\), rotational invariance and homogeneity reduce the conjecture to
+\[
+\mathbb E|R^2-1|\le(\mathbb ER)^2,\qquad R=|Z+s|,\quad s=|a/b|\ge0.
+\]
+Since \(\mathbb ER^2=s^2+2\), this is equivalent to
+\[
+\operatorname{Var}(R)+2\mathbb E(1-R^2)_+\le1.
+\]
+Gaussian Poincaré alone gives only \(\operatorname{Var}(R)\le1\). A quantitative deficit is necessary. The second-order spectral gap gives \(\operatorname{Var}(R)\le(1+|\mathbb E\nabla R|^2)/2\), because \(|\nabla R|=1\) almost everywhere. Thus a sufficient (still unproved) scalar inequality is \(4\mathbb E(1-R^2)_+\le1-|\mathbb E\nabla R|^2\). Numerical quadrature at s=0,0.25,...,5 yielded positive gaps, but no universal estimate has been certified.
+
+The first priority is the exact polynomial reformulation and finite approximation; the remaining sharp Gaussian inequality must not be introduced as an axiom or silently assumed.
