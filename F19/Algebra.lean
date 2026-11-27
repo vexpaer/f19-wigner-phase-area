@@ -100,8 +100,10 @@ theorem gammaRatio_lower (n : ℝ) (hn : 0 ≤ n) :
   rw [show (n+2)/2 = x+1/2 by dsimp [x]; ring,
     show (n+1)/2 = x by rfl, div_pow]
   apply (le_div_iff₀ (pow_pos hg 2)).2
-  apply (div_mul_le_iff₀ hd).2
-  nlinarith only [hh]
+  calc
+    (n+1)^2 / (2*(n+2)) * Real.Gamma x ^ 2 =
+        ((n+1)^2 * Real.Gamma x ^ 2) / (2*(n+2)) := by ring
+    _ ≤ Real.Gamma (x+1/2)^2 := (div_le_iff₀ hd).2 (by nlinarith only [hh])
 
 theorem gammaRatio_step (n : ℝ) (hn : 0 ≤ n) :
     gammaRatio (n+2) = ((n+2)/(n+1)) * gammaRatio n := by
