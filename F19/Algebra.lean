@@ -1761,7 +1761,7 @@ theorem planarDiagonalHusimiRoot_sq (p : ℕ → ℝ) (z : ℂ) :
         ∑' n, ENNReal.ofReal (p n) *
           ENNReal.ofReal ((1/2 : ℝ)*Real.exp (-(‖z‖^2)/2)*(‖z‖^2/2)^n/(n.factorial : ℝ)) := by
   unfold planarDiagonalHusimiRoot
-  rw [mul_pow, inv_pow, ← ENNReal.ofReal_pow (Real.sqrt_nonneg Real.pi),
+  rw [mul_pow, ← ENNReal.inv_pow, ← ENNReal.ofReal_pow (Real.sqrt_nonneg Real.pi),
     Real.sq_sqrt Real.pi_nonneg, diagonalHusimiRoot_formula p _ (sq_nonneg _)]
 
 theorem planar_diagonal_strict (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n)
