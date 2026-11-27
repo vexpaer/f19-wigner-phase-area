@@ -1463,3 +1463,81 @@ theorem planar_radial_lintegral (g : ℝ → ℝ≥0∞) (hg : Measurable g) :
 #print axioms planar_radial_lintegral
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+noncomputable def planarDiagonalWigner (p : ℕ → ℝ) (z : ℂ) : ℝ :=
+  diagonalWigner p (‖z‖^2) / Real.pi
+
+noncomputable def planarDiagonalHusimiRoot (p : ℕ → ℝ) (z : ℂ) : ℝ≥0∞ :=
+  (ENNReal.ofReal (Real.sqrt Real.pi))⁻¹ * diagonalHusimiRoot p (‖z‖^2)
+
+theorem diagonalWigner_measurable (p : ℕ → ℝ) : Measurable (diagonalWigner p) := by
+  unfold diagonalWigner
+  apply Measurable.tsum
+  intro n
+  unfold radialWigner radialFock laguerre
+  fun_prop
+
+theorem diagonalHusimiRoot_measurable (p : ℕ → ℝ) : Measurable (diagonalHusimiRoot p) := by
+  unfold diagonalHusimiRoot mixtureRoot
+  apply Measurable.pow_const
+  apply Measurable.ennreal_tsum
+  intro n
+  apply Measurable.const_mul
+  apply Measurable.pow_const
+  unfold radialHusimiRoot
+  fun_prop
+
+theorem planarDiagonalWigner_lintegral (p : ℕ → ℝ) :
+    (∫⁻ z : ℂ, ENNReal.ofReal |planarDiagonalWigner p z|) =
+      ∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal |diagonalWigner p t| := by
+  have hmeas : Measurable (fun t => ENNReal.ofReal |diagonalWigner p t|) :=
+    (diagonalWigner_measurable p).abs.ennreal_ofReal
+  have hpi : ENNReal.ofReal Real.pi ≠ 0 := by simp [Real.pi_pos]
+  have hpit : ENNReal.ofReal Real.pi ≠ ⊤ := ENNReal.ofReal_ne_top
+  have he : (fun z : ℂ => ENNReal.ofReal |planarDiagonalWigner p z|) =
+      (fun z : ℂ => (ENNReal.ofReal Real.pi)⁻¹ *
+        ENNReal.ofReal |diagonalWigner p (‖z‖^2)|) := by
+    funext z
+    unfold planarDiagonalWigner
+    rw [abs_div, abs_of_pos Real.pi_pos, div_eq_mul_inv,
+      ENNReal.ofReal_mul (abs_nonneg _), ENNReal.ofReal_inv_of_pos Real.pi_pos, mul_comm]
+  rw [he, lintegral_const_mul _ (hmeas.comp (by fun_prop)),
+    planar_radial_lintegral _ hmeas, ← mul_assoc, ENNReal.inv_mul_cancel hpi hpit, one_mul]
+
+theorem planarDiagonalHusimiRoot_lintegral (p : ℕ → ℝ) :
+    (∫⁻ z : ℂ, planarDiagonalHusimiRoot p z) =
+      ENNReal.ofReal (Real.sqrt Real.pi) *
+        (∫⁻ t in Ioi (0 : ℝ), diagonalHusimiRoot p t) := by
+  have hs : 0 < Real.sqrt Real.pi := Real.sqrt_pos.2 Real.pi_pos
+  have h0 : ENNReal.ofReal (Real.sqrt Real.pi) ≠ 0 := by simp [hs]
+  have ht : ENNReal.ofReal (Real.sqrt Real.pi) ≠ ⊤ := ENNReal.ofReal_ne_top
+  have he : ENNReal.ofReal Real.pi = ENNReal.ofReal (Real.sqrt Real.pi)^2 := by
+    rw [← ENNReal.ofReal_pow hs.le, Real.sq_sqrt Real.pi_nonneg]
+  unfold planarDiagonalHusimiRoot
+  rw [lintegral_const_mul _ ((diagonalHusimiRoot_measurable p).comp (by fun_prop)),
+    planar_radial_lintegral _ (diagonalHusimiRoot_measurable p), he, pow_two]
+  rw [← mul_assoc, ← mul_assoc, ENNReal.inv_mul_cancel h0 ht, one_mul]
+
+theorem planar_diagonal_inequality (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n) :
+    8 * ENNReal.ofReal Real.pi *
+      (∫⁻ z : ℂ, ENNReal.ofReal |planarDiagonalWigner p z|) ≤
+      (∫⁻ z : ℂ, planarDiagonalHusimiRoot p z)^2 := by
+  rw [planarDiagonalWigner_lintegral, planarDiagonalHusimiRoot_lintegral,
+    mul_pow, ← ENNReal.ofReal_pow (Real.sqrt_nonneg Real.pi),
+    Real.sq_sqrt Real.pi_nonneg]
+  calc
+    _ = ENNReal.ofReal Real.pi *
+        (8 * (∫⁻ t in Ioi (0 : ℝ), ENNReal.ofReal |diagonalWigner p t|)) := by ac_rfl
+    _ ≤ _ := mul_le_mul_left' (diagonal_radial_inequality p hp) _
+
+#print axioms diagonalWigner_measurable
+#print axioms diagonalHusimiRoot_measurable
+#print axioms planar_diagonal_inequality
+
+end F19
