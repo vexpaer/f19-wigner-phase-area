@@ -1064,7 +1064,7 @@ theorem radialHusimi_rhs (n : ℕ) :
       ∫ t in Ioi (0 : ℝ), radialHusimiRoot n t := by
     apply setIntegral_congr_fun measurableSet_Ioi
     intro t ht
-    unfold radialHusimi
+    change Real.sqrt (radialHusimiRoot n t ^ 2) = radialHusimiRoot n t
     rw [Real.sqrt_sq_eq_abs, abs_of_nonneg (radialHusimiRoot_nonneg n t ht.le)]
   rw [he, radialHusimiRoot_integral, mul_pow, div_pow, mul_pow,
     rpow_half_nat_sq 2 (by norm_num),
