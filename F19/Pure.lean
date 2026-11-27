@@ -73,8 +73,8 @@ theorem fejerWeight_cutoff (N n : ℕ) (hn : N < n) : fejerWeight N n = 0 := by
   unfold fejerWeight
   have h : (1 : ℝ) ≤ (n : ℝ)/(N+1) := by
     apply (le_div_iff₀ (by positivity : 0 < (N : ℝ)+1)).2
-    have h' : N+1 ≤ n := hn
-    exact_mod_cast (show N+1 ≤ n by omega)
+    have h' : (N : ℝ)+1 ≤ (n : ℝ) := by exact_mod_cast (show N+1 ≤ n by omega)
+    simpa using h'
   rw [min_eq_left h, sub_self]
 
 theorem fejerWeight_in_range (N n : ℕ) (hn : n ≤ N) :
@@ -128,5 +128,56 @@ theorem fejerKernel_nonneg (N : ℕ) (z : ℂ) : 0 ≤ fejerKernel N z := by
 #print axioms fejerWeight_tendsto
 #print axioms fejer_square_le
 #print axioms fejerKernel_nonneg
+
+end F19.Pure
+
+
+namespace F19.Pure
+
+theorem fejer_error_square_le (N n : ℕ) (c : ℂ) :
+    ‖(fejerWeight N n : ℂ) * c - c‖^2 ≤ ‖c‖^2 := by
+  rw [← sub_one_mul, ← Complex.ofReal_one, ← Complex.ofReal_sub,
+    norm_mul, Complex.norm_real, Real.norm_eq_abs]
+  have h0 := fejerWeight_nonneg N n
+  have h1 := fejerWeight_le_one N n
+  rw [abs_of_nonpos (sub_nonpos.mpr h1)]
+  have h : -(fejerWeight N n-1)*‖c‖ ≤ ‖c‖ := by
+    have h' : -(fejerWeight N n-1) ≤ 1 := by linarith
+    simpa using mul_le_mul_of_nonneg_right h' (norm_nonneg c)
+  gcongr
+  positivity
+
+theorem fejer_error_tendsto (n : ℕ) (c : ℂ) :
+    Tendsto (fun N : ℕ => ENNReal.ofReal ‖(fejerWeight N n : ℂ)*c-c‖^2)
+      atTop (𝓝 0) := by
+  have h := (Complex.continuous_ofReal.tendsto 1).comp (fejerWeight_tendsto n)
+  have hc : Tendsto (fun N : ℕ => (fejerWeight N n : ℂ)*c-c) atTop (𝓝 0) := by
+    simpa using (h.mul_const c).sub_const c
+  simpa using ENNReal.tendsto_ofReal (hc.norm.pow 2)
+
+-- Convergence in the squared ℓ² coefficient error, for every square-summable
+-- coefficient sequence. No finite-support assumption is made on c.
+theorem fejer_l2_error_tendsto (c : ℕ → ℂ) (hc : Summable (fun n => ‖c n‖^2)) :
+    Tendsto (fun N : ℕ => ∑' n, ENNReal.ofReal ‖(fejerWeight N n : ℂ)*c n-c n‖^2)
+      atTop (𝓝 0) := by
+  let f : ℕ → ℕ → ℝ≥0∞ := fun N n => ENNReal.ofReal ‖(fejerWeight N n : ℂ)*c n-c n‖^2
+  let g : ℕ → ℝ≥0∞ := fun n => ENNReal.ofReal ‖c n‖^2
+  have hfin : (∫⁻ n, g n ∂Measure.count) ≠ ⊤ := by
+    rw [lintegral_count]
+    dsimp [g]
+    rw [← ENNReal.ofReal_tsum_of_nonneg (fun n => sq_nonneg ‖c n‖) hc]
+    exact ENNReal.ofReal_ne_top
+  have hf : ∀ N, Measurable (f N) := fun N => measurable_of_countable _
+  have hdom : ∀ N, f N ≤ᵐ[Measure.count] g := fun N =>
+    Eventually.of_forall (fun n => ENNReal.ofReal_le_ofReal (fejer_error_square_le N n (c n)))
+  have hlim : ∀ᵐ n ∂(Measure.count : Measure ℕ),
+      Tendsto (fun N => f N n) atTop (𝓝 ((fun _ : ℕ => (0 : ℝ≥0∞)) n)) :=
+    Eventually.of_forall (fun n => fejer_error_tendsto n (c n))
+  have h := tendsto_lintegral_of_dominated_convergence g hf hdom hfin hlim
+  simpa [lintegral_count, f] using h
+
+#print axioms fejer_error_square_le
+#print axioms fejer_error_tendsto
+#print axioms fejer_l2_error_tendsto
 
 end F19.Pure
