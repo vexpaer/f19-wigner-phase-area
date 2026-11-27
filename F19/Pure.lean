@@ -1251,3 +1251,66 @@ theorem bernMean_poisson_tendsto (r : ℝ≥0) (d : ℕ) (f : ℕ → ℝ)
 #print axioms bernMean_poisson_tendsto
 
 end F19.Pure
+
+
+namespace F19.Pure
+open scoped NNReal
+
+theorem oddsProb_nonneg (r : ℝ) (hr : 0 ≤ r) (d n : ℕ) :
+    0 ≤ oddsProb r d n := by
+  unfold oddsProb
+  positivity
+
+theorem oddsProb_le_one (r : ℝ) (hr : 0 ≤ r) (d n : ℕ)
+    (hd : 0 < (n:ℝ)+d) : oddsProb r d n ≤ 1 := by
+  unfold oddsProb
+  apply (div_le_iff₀ (add_pos_of_pos_of_nonneg hd hr)).2
+  linarith
+
+theorem oddsProb_tendsto_zero (r : ℝ) (d : ℕ) :
+    Tendsto (fun n => oddsProb r d n) atTop (𝓝 0) := by
+  have ht : Tendsto (fun n : ℕ => (n:ℝ)+d+r) atTop atTop :=
+    tendsto_atTop_add_const_right atTop r
+      (tendsto_atTop_add_const_right atTop (d:ℝ) tendsto_natCast_atTop_atTop)
+  have hi := tendsto_inv_atTop_zero.comp ht
+  simpa [oddsProb, div_eq_mul_inv] using hi.const_mul r
+
+theorem oddsProb_poincare_factor (r : ℝ≥0) :
+    Tendsto (fun n : ℕ => ((n:ℝ)+1)*oddsProb (r:ℝ) 1 n*(1-oddsProb (r:ℝ) 1 n))
+      atTop (𝓝 (r:ℝ)) := by
+  have hp := oddsProb_tendsto_zero (r:ℝ) 1
+  have he (n : ℕ) : ((n:ℝ)+1)*oddsProb (r:ℝ) 1 n = (r:ℝ)*(1-oddsProb (r:ℝ) 1 n) := by
+    unfold oddsProb
+    have hd : 0 < (n:ℝ)+1+(r:ℝ) := by positivity
+    field_simp [hd.ne'] <;> ring
+  simp_rw [he]
+  have ht : Tendsto (fun n : ℕ => 1-oddsProb (r:ℝ) 1 n) atTop (𝓝 1) := by
+    simpa using ((tendsto_const_nhds : Tendsto (fun _ : ℕ => (1:ℝ)) atTop (𝓝 1)).sub hp)
+  simpa using (ht.const_mul (r:ℝ)).mul ht
+
+/-- Poisson Poincare inequality for functions with summable factorial
+envelopes for their first and second moments and squared increments. -/
+theorem poisson_poincare (r : ℝ≥0) (f : ℕ → ℝ)
+    (hm : Summable (fun k => ((r:ℝ)^k/(k.factorial:ℝ))*‖f k‖))
+    (hs : Summable (fun k => ((r:ℝ)^k/(k.factorial:ℝ))*‖(f k)^2‖))
+    (hd : Summable (fun k => ((r:ℝ)^k/(k.factorial:ℝ))*‖deltaSq f k‖)) :
+    (∑' k, ProbabilityTheory.poissonPMFReal r k*(f k)^2) -
+        (∑' k, ProbabilityTheory.poissonPMFReal r k*f k)^2 ≤
+      (r:ℝ)*(∑' k, ProbabilityTheory.poissonPMFReal r k*deltaSq f k) := by
+  let p : ℕ → ℝ := oddsProb (r:ℝ) 1
+  have hfirst (g : ℕ → ℝ)
+      (hg : Summable (fun k => ((r:ℝ)^k/(k.factorial:ℝ))*‖g k‖)) :
+      Tendsto (fun n => bernMean (p n) (n+1) g) atTop
+        (𝓝 (∑' k, ProbabilityTheory.poissonPMFReal r k*g k)) := by
+    have h := (bernMean_poisson_tendsto r 0 g hg).comp (tendsto_add_atTop_nat 1)
+    simpa [p, oddsProb, Nat.cast_add] using h
+  exact poincare_limit (r:ℝ) p f _ _ _
+    (fun n => oddsProb_nonneg _ r.property 1 n)
+    (fun n => oddsProb_le_one _ r.property 1 n (by positivity))
+    (hfirst f hm) (hfirst (fun k => (f k)^2) hs)
+    (bernMean_poisson_tendsto r 1 (deltaSq f) hd) (oddsProb_poincare_factor r)
+
+#print axioms oddsProb_poincare_factor
+#print axioms poisson_poincare
+
+end F19.Pure
