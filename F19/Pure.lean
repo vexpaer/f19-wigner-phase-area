@@ -461,3 +461,58 @@ theorem finiteWigner_jet_real (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
 #print axioms finiteWigner_jet_real
 
 end F19.Pure
+
+
+namespace F19.Pure
+
+noncomputable def gaussianMean (g : ℂ → ℝ) : ℝ :=
+  (∫ z : ℂ, Real.exp (-‖z‖^2/2) * g z)/(2*Real.pi)
+
+noncomputable def finiteWigner (N : ℕ) (c : ℕ → ℂ) (z : ℂ) : ℝ :=
+  (Real.exp (-‖z‖^2)/Real.pi) *
+    (finiteWignerPolynomial N c (Real.sqrt 2 • z)).re
+
+theorem finiteWigner_abs_jet (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
+    |finiteWigner N c z| =
+      (Real.exp (-‖z‖^2)/Real.pi) * |jetAlternating N c (Real.sqrt 2 • z)| := by
+  unfold finiteWigner
+  rw [finiteWigner_jet_real, Complex.ofReal_re, abs_mul,
+    abs_of_pos (div_pos (Real.exp_pos _) Real.pi_pos)]
+
+theorem finiteWigner_gaussian_identity (N : ℕ) (c : ℕ → ℂ) :
+    (∫ z : ℂ, |finiteWigner N c z|) =
+      gaussianMean (fun z => |jetAlternating N c z|) := by
+  simp_rw [finiteWigner_abs_jet]
+  unfold gaussianMean
+  let g : ℂ → ℝ := fun z => Real.exp (-‖z‖^2/2) * |jetAlternating N c z|
+  have he (z : ℂ) :
+      (Real.exp (-‖z‖^2)/Real.pi) * |jetAlternating N c (Real.sqrt 2 • z)| =
+        g (Real.sqrt 2 • z) / Real.pi := by
+    dsimp [g]
+    rw [norm_smul, Real.norm_eq_abs, abs_of_nonneg (Real.sqrt_nonneg 2),
+      mul_pow, Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2),
+      show -(2*‖z‖^2)/2 = -‖z‖^2 by ring]
+    ring
+  simp_rw [he, div_eq_mul_inv]
+  rw [integral_mul_const,
+    Measure.integral_comp_smul_of_nonneg volume g (Real.sqrt 2)
+      (hR := Real.sqrt_nonneg 2),
+    Complex.finrank_real_complex, Real.sq_sqrt (by norm_num : (0 : ℝ) ≤ 2), smul_eq_mul]
+  change _ = (∫ z : ℂ, g z) * _
+  ring
+
+-- Exact finite polynomial target. This is an equivalence, not a proof
+-- that either inequality holds. All non-diagonal terms remain present.
+theorem finite_pure_gaussian_iff (N : ℕ) (c : ℕ → ℂ) :
+    ((∫ z : ℂ, |finiteWigner N c z|) ≤
+      ((∫ z : ℂ, husimiAmplitude (bargmannPolynomial N c) z)/(2*Real.pi))^2) ↔
+    (gaussianMean (fun z => |jetAlternating N c z|) ≤
+      (gaussianMean (fun z => ‖bargmannPolynomial N c z‖))^2) := by
+  rw [finiteWigner_gaussian_identity]
+  rfl
+
+#print axioms finiteWigner_abs_jet
+#print axioms finiteWigner_gaussian_identity
+#print axioms finite_pure_gaussian_iff
+
+end F19.Pure
