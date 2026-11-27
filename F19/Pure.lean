@@ -303,3 +303,42 @@ theorem finiteCrossVacuum_norm (N : ℕ) (c : ℕ → ℂ) :
 #print axioms finiteCrossVacuum_norm
 
 end F19.Pure
+
+
+namespace F19.Pure
+
+/-- The explicit real polynomial for a vacuum--one-photon superposition
+with real coefficients (the relative phase can be removed by rotation). -/
+noncomputable def qubitWignerPoly (a b x y : ℝ) : ℝ :=
+  a^2-b^2+2*b^2*(x^2+y^2)+2*Real.sqrt 2*a*b*x
+
+theorem qubitWignerPoly_square (a b x y : ℝ) (hb : b ≠ 0) :
+    qubitWignerPoly a b x y =
+      b^2*(2*((x+a/(Real.sqrt 2*b))^2+y^2)-1) := by
+  have hs : 0 < Real.sqrt (2 : ℝ) := Real.sqrt_pos.2 (by norm_num)
+  have hs2 : (Real.sqrt (2 : ℝ))^2 = 2 := Real.sq_sqrt (by norm_num)
+  have hden : Real.sqrt 2*b ≠ 0 := mul_ne_zero hs.ne' hb
+  have hA : (a/(Real.sqrt 2*b))^2 = a^2/(2*b^2) := by
+    rw [div_pow, mul_pow, hs2]
+  have hB : 4*b^2*x*(a/(Real.sqrt 2*b)) = 2*Real.sqrt 2*a*b*x := by
+    rw [← mul_div_assoc]
+    apply (div_eq_iff hden).2
+    linear_combination -congrArg (fun u : ℝ => 2*a*b^2*x*u) hs2
+  unfold qubitWignerPoly
+  rw [add_sq, hA]
+  have hb2 : b^2 ≠ 0 := pow_ne_zero _ hb
+  have hC : 2*b^2*(a^2/(2*b^2)) = a^2 := by
+    field_simp [hb2]
+  linear_combination -hB-hC
+
+theorem qubitWignerPoly_negative_iff (a b x y : ℝ) (hb : b ≠ 0) :
+    qubitWignerPoly a b x y < 0 ↔ (x+a/(Real.sqrt 2*b))^2+y^2 < 1/2 := by
+  rw [qubitWignerPoly_square a b x y hb]
+  have hb2 : 0 < b^2 := sq_pos_of_ne_zero hb
+  rw [mul_neg_iff_of_pos_left hb2]
+  constructor <;> intro h <;> linarith
+
+#print axioms qubitWignerPoly_square
+#print axioms qubitWignerPoly_negative_iff
+
+end F19.Pure
