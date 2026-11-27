@@ -1088,3 +1088,77 @@ theorem fock_radial_husimi_inequality (n : ℕ) :
 #print axioms fock_radial_husimi_inequality
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory
+open scoped ENNReal
+
+-- Cauchy–Schwarz for arbitrary countable sums, including infinite values.
+theorem enn_countable_cauchy (a b : ℕ → ℝ≥0∞) :
+    (∑' i, a i * b i) ≤
+      (∑' i, a i ^ 2) ^ (1/2 : ℝ) * (∑' i, b i ^ 2) ^ (1/2 : ℝ) := by
+  have hpq : Real.HolderConjugate 2 2 :=
+    Real.holderConjugate_iff.mpr (by norm_num)
+  have ha : AEMeasurable a Measure.count := (measurable_of_countable a).aemeasurable
+  have hb : AEMeasurable b Measure.count := (measurable_of_countable b).aemeasurable
+  have h := lintegral_mul_le_Lp_mul_Lq Measure.count hpq ha hb
+  simpa only [Pi.mul_apply, ENNReal.rpow_two, lintegral_count] using h
+
+theorem enn_half_sq (x : ℝ≥0∞) : (x ^ (1/2 : ℝ))^2 = x := by
+  rw [← ENNReal.rpow_two, ← ENNReal.rpow_mul]
+  norm_num [ENNReal.rpow_one]
+
+noncomputable def mixtureRoot {α : Type*} (p : ℕ → ℝ≥0∞)
+    (f : ℕ → α → ℝ≥0∞) (x : α) : ℝ≥0∞ :=
+  (∑' i, p i * f i x ^ 2) ^ (1/2 : ℝ)
+
+theorem mixtureRoot_pair_bound {α : Type*} (p : ℕ → ℝ≥0∞)
+    (f : ℕ → α → ℝ≥0∞) (x y : α) :
+    (∑' i, p i * (f i x * f i y)) ≤ mixtureRoot p f x * mixtureRoot p f y := by
+  have h := enn_countable_cauchy
+    (fun i => (p i)^(1/2 : ℝ) * f i x)
+    (fun i => (p i)^(1/2 : ℝ) * f i y)
+  simp only [mul_pow, enn_half_sq] at h
+  unfold mixtureRoot
+  refine le_trans (le_of_eq ?_) h
+  apply tsum_congr
+  intro i
+  calc
+    p i * (f i x * f i y) = ((p i)^(1/2 : ℝ))^2 * (f i x * f i y) := by rw [enn_half_sq]
+    _ = _ := by rw [pow_two]; ac_rfl
+
+-- A Tonelli proof of concavity of the squared root integral for countable
+-- nonnegative mixtures; no finite-entropy hypothesis is necessary.
+theorem countable_mixture_root_bound {α : Type*} [MeasurableSpace α]
+    (μ : Measure α) (p : ℕ → ℝ≥0∞) (f : ℕ → α → ℝ≥0∞)
+    (hf : ∀ i, Measurable (f i)) :
+    (∑' i, p i * (∫⁻ x, f i x ∂μ)^2) ≤
+      (∫⁻ x, mixtureRoot p f x ∂μ)^2 := by
+  have hm : Measurable (mixtureRoot p f) := by
+    unfold mixtureRoot
+    exact (Measurable.ennreal_tsum (fun i => (hf i).pow_const 2 |>.const_mul (p i))).pow_const (1/2 : ℝ)
+  have he : (∫⁻ x, ∫⁻ y, ∑' i, p i * (f i x * f i y) ∂μ ∂μ) =
+      ∑' i, p i * (∫⁻ x, f i x ∂μ)^2 := by
+    have hx (x : α) : (∫⁻ y, ∑' i, p i * (f i x * f i y) ∂μ) =
+        ∑' i, (p i * f i x) * (∫⁻ y, f i y ∂μ) := by
+      rw [lintegral_tsum (fun i => ((measurable_const.mul (measurable_const.mul (hf i)))).aemeasurable)]
+      apply tsum_congr
+      intro i
+      simp_rw [← mul_assoc]
+      rw [lintegral_const_mul _ (hf i)]
+    simp_rw [hx]
+    rw [lintegral_tsum (fun i => ((measurable_const.mul (hf i)).mul_const _).aemeasurable)]
+    apply tsum_congr
+    intro i
+    rw [lintegral_mul_const _ (measurable_const.mul (hf i)), lintegral_const_mul _ (hf i), pow_two]
+    ac_rfl
+  rw [← he, pow_two, ← lintegral_lintegral_mul hm.aemeasurable hm.aemeasurable]
+  exact lintegral_mono (fun x => lintegral_mono (fun y => mixtureRoot_pair_bound p f x y))
+
+#print axioms enn_countable_cauchy
+#print axioms mixtureRoot_pair_bound
+#print axioms countable_mixture_root_bound
+
+end F19
