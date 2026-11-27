@@ -228,3 +228,48 @@ theorem fock_comparison_gamma (n A : ℝ) (hn : 1 ≤ n)
 #print axioms fock_comparison_gamma
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+
+theorem husimi_gamma_integral (n : ℕ) :
+    (∫ t in Ioi (0 : ℝ), Real.exp (-t) * t ^ ((n : ℝ)/2)) =
+      Real.Gamma ((n : ℝ)/2+1) := by
+  have hn : 0 ≤ (n : ℝ) := by positivity
+  rw [Real.Gamma_eq_integral (show 0 < (n : ℝ)/2+1 by linarith)]
+  simp only [add_sub_cancel_right]
+
+theorem gammaRatio_factorial (n : ℕ) :
+    (2 : ℝ)^n * Real.Gamma ((n : ℝ)/2+1)^2 / (n.factorial : ℝ) =
+      Real.sqrt Real.pi * gammaRatio (n : ℝ) := by
+  have hn : 0 ≤ (n : ℝ) := by positivity
+  have hs : 0 < ((n : ℝ)+1)/2 := by linarith
+  have h := Real.Gamma_mul_Gamma_add_half_of_pos hs
+  rw [show ((n : ℝ)+1)/2+1/2 = (n : ℝ)/2+1 by ring,
+    show 2*(((n : ℝ)+1)/2) = (n : ℝ)+1 by ring] at h
+  rw [show 1-((n : ℝ)+1) = -(n : ℝ) by ring,
+    Real.rpow_neg (by norm_num : 0 ≤ (2 : ℝ)),
+    Real.rpow_natCast, Real.Gamma_nat_eq_factorial] at h
+  have hg : Real.Gamma (((n : ℝ)+1)/2) ≠ 0 :=
+    (Real.Gamma_pos_of_pos hs).ne'
+  have hf : (n.factorial : ℝ) ≠ 0 := by exact_mod_cast Nat.factorial_ne_zero n
+  have ht : (2 : ℝ)^n ≠ 0 := pow_ne_zero _ (by norm_num)
+  unfold gammaRatio
+  rw [show ((n : ℝ)+2)/2 = (n : ℝ)/2+1 by ring]
+  field_simp [hg, hf]
+  field_simp [ht] at h
+  linear_combination Real.Gamma ((n : ℝ)/2+1) * h
+
+theorem fock_comparison_factorial (n : ℕ) (A : ℝ) (hn : 1 ≤ n)
+    (hA : A^8 ≤ Real.pi^4 * momentPoly (n : ℝ) / 1728) :
+    A < (2 : ℝ)^n * Real.Gamma ((n : ℝ)/2+1)^2 / (n.factorial : ℝ) := by
+  rw [gammaRatio_factorial]
+  exact fock_comparison_gamma (n : ℝ) A (by exact_mod_cast hn) hA
+
+#print axioms husimi_gamma_integral
+#print axioms gammaRatio_factorial
+#print axioms fock_comparison_factorial
+
+end F19
