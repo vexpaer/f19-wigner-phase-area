@@ -1276,3 +1276,32 @@ theorem diagonal_radial_inequality (p : ℕ → ℝ) (hp : ∀ n, 0 ≤ p n) :
 #print axioms diagonal_radial_inequality
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+open scoped ENNReal
+
+theorem diagonalHusimiRoot_sq (p : ℕ → ℝ) (t : ℝ) (ht : 0 ≤ t) :
+    diagonalHusimiRoot p t ^ 2 =
+      ∑' n, ENNReal.ofReal (p n) * ENNReal.ofReal (radialHusimi n t) := by
+  unfold diagonalHusimiRoot mixtureRoot
+  rw [enn_half_sq]
+  apply tsum_congr
+  intro n
+  rw [radialHusimi, ENNReal.ofReal_pow (radialHusimiRoot_nonneg n t ht)]
+
+theorem diagonalHusimiRoot_formula (p : ℕ → ℝ) (t : ℝ) (ht : 0 ≤ t) :
+    diagonalHusimiRoot p t ^ 2 =
+      ∑' n, ENNReal.ofReal (p n) *
+        ENNReal.ofReal ((1/2 : ℝ)*Real.exp (-t/2)*(t/2)^n/(n.factorial : ℝ)) := by
+  rw [diagonalHusimiRoot_sq p t ht]
+  apply tsum_congr
+  intro n
+  rw [radialHusimi_density_formula n t ht]
+
+#print axioms diagonalHusimiRoot_sq
+#print axioms diagonalHusimiRoot_formula
+
+end F19
