@@ -1316,3 +1316,89 @@ theorem poisson_poincare (r : ℝ≥0) (f : ℕ → ℝ)
 #print axioms poisson_poincare
 
 end F19.Pure
+
+
+namespace F19.Pure
+open scoped NNReal
+
+noncomputable def chiMean (k : ℕ) : ℝ :=
+  Real.sqrt 2 * F19.gammaRatio (2*(k:ℝ)+1)
+
+noncomputable def chiVariance (k : ℕ) : ℝ :=
+  2*((k:ℝ)+1)-(chiMean k)^2
+
+noncomputable def gammaNegative (k : ℕ) : ℝ :=
+  (2:ℝ)/(k.factorial:ℝ) *
+    (∫ u in (0:ℝ)..(1/2:ℝ), (1-2*u)*Real.exp (-u)*u^k)
+
+theorem chiMean_nonneg (k : ℕ) : 0 ≤ chiMean k := by
+  unfold chiMean
+  exact mul_nonneg (Real.sqrt_nonneg _) (F19.gammaRatio_pos _ (by positivity)).le
+
+theorem chiMean_sq (k : ℕ) : chiMean k^2 = 2*chiGammaSq k := by
+  unfold chiMean chiGammaSq
+  rw [mul_pow, Real.sq_sqrt (by norm_num : (0:ℝ) ≤ 2)]
+
+theorem chiVariance_bounds (k : ℕ) : 1/3 ≤ chiVariance k ∧ chiVariance k ≤ 1/2 := by
+  unfold chiVariance
+  rw [chiMean_sq]
+  exact chi_variance_bounds k
+
+theorem chiMean_step (k : ℕ) :
+    chiMean (k+1) = chiMean k*(1+1/(2*((k:ℝ)+1))) := by
+  unfold chiMean
+  push_cast
+  rw [show 2*((k:ℝ)+1)+1 = (2*(k:ℝ)+1)+2 by ring, F19.gammaRatio_step _ (by positivity)]
+  have hk : (0:ℝ) < (k:ℝ)+1 := by positivity
+  field_simp [hk.ne'] <;> ring
+
+theorem chiDelta_formula (k : ℕ) :
+    deltaSq chiMean k = 1/(2*((k:ℝ)+1))-chiVariance k/(4*((k:ℝ)+1)^2) := by
+  unfold deltaSq
+  rw [chiMean_step]
+  exact chi_increment_sq ((k:ℝ)+1) (chiMean k) (chiVariance k) (by positivity) rfl
+
+theorem gammaNegative_nonneg (k : ℕ) : 0 ≤ gammaNegative k := by
+  unfold gammaNegative
+  apply mul_nonneg (by positivity)
+  apply intervalIntegral.integral_nonneg (by norm_num)
+  intro u hu
+  have h0 : 0 ≤ u := hu.1
+  have h1 : u ≤ 1/2 := hu.2
+  exact mul_nonneg (mul_nonneg (by linarith) (Real.exp_pos _).le) (pow_nonneg h0 k)
+
+theorem gammaNegative_le (k : ℕ) :
+    gammaNegative k ≤ 1/((2:ℝ)^k*((k:ℝ)+1)*((k:ℝ)+2)*(k.factorial:ℝ)) :=
+  qubit_negative_gamma_bound k
+
+/-- The complete componentwise comparison of variance and negativity.
+This is valid even for k = 0, where the shifted increment is multiplied
+by zero. -/
+theorem chi_component_bound (k : ℕ) :
+    chiVariance k + (k:ℝ)*deltaSq chiMean (k-1) + gammaNegative k ≤ 1 := by
+  cases k with
+  | zero =>
+    have h1 := (chiVariance_bounds 0).2
+    have h2 := gammaNegative_le 0
+    norm_num at h2 ⊢
+    linarith
+  | succ k =>
+    have h1 := (chiVariance_bounds (k+1)).2
+    have h2 := (chiVariance_bounds k).1
+    have h3 := (gammaNegative_le (k+1)).trans
+      (qubit_negative_coeff_variance (k+1) (by omega) (chiVariance k) h2)
+    have ht : (0:ℝ) < (k:ℝ)+1 := by positivity
+    rw [Nat.succ_sub_one, Nat.cast_succ, chiDelta_formula]
+    push_cast at h3
+    have he : ((k:ℝ)+1)*(1/(2*((k:ℝ)+1))-chiVariance k/(4*((k:ℝ)+1)^2)) =
+        1/2-chiVariance k/(4*((k:ℝ)+1)) := by
+      field_simp [ht.ne'] <;> ring
+    rw [he]
+    linarith only [h1, h3]
+
+#print axioms chiMean_step
+#print axioms chiDelta_formula
+#print axioms gammaNegative_nonneg
+#print axioms chi_component_bound
+
+end F19.Pure
