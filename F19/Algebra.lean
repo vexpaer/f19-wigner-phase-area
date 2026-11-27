@@ -354,3 +354,95 @@ theorem optimized_moment_bound (n A a : ℝ) (ha : 0 < a)
 #print axioms optimized_moment_bound
 
 end F19
+
+
+namespace F19
+
+open MeasureTheory Set
+
+theorem weighted_cauchy_sq {α : Type*} [MeasurableSpace α] (μ : Measure α)
+    (f w : α → ℝ) (hw : ∀ x, 0 < w x)
+    (hf : Integrable (fun x => |f x|) μ)
+    (hfw : Integrable (fun x => f x ^ 2 * w x) μ)
+    (hi : Integrable (fun x => (w x)⁻¹) μ)
+    (hb : 0 < ∫ x, (w x)⁻¹ ∂μ) :
+    (∫ x, |f x| ∂μ)^2 ≤
+      (∫ x, f x ^ 2 * w x ∂μ) * (∫ x, (w x)⁻¹ ∂μ) := by
+  let F : α → ℝ := fun x => |f x| * Real.sqrt (w x)
+  let G : α → ℝ := fun x => (Real.sqrt (w x))⁻¹
+  have eF : (fun x => F x ^ 2) = (fun x => f x ^ 2 * w x) := by
+    funext x
+    dsimp [F]
+    rw [mul_pow, sq_abs, Real.sq_sqrt (hw x).le]
+  have eG : (fun x => G x ^ 2) = (fun x => (w x)⁻¹) := by
+    funext x
+    dsimp [G]
+    rw [inv_pow, Real.sq_sqrt (hw x).le]
+  have eFG : (fun x => F x * G x) = (fun x => |f x|) := by
+    funext x
+    dsimp [F,G]
+    rw [mul_assoc, mul_inv_cancel₀ (Real.sqrt_pos.2 (hw x)).ne', mul_one]
+  have hF : Integrable (fun x => F x ^ 2) μ := by rw [eF]; exact hfw
+  have hG : Integrable (fun x => G x ^ 2) μ := by rw [eG]; exact hi
+  have hFG : Integrable (fun x => F x * G x) μ := by rw [eFG]; exact hf
+  have hB : 0 < ∫ x, G x ^ 2 ∂μ := by rw [eG]; exact hb
+  have h := integral_cauchy_sq μ F G hF hG hFG hB
+  rw [eFG, eF, eG] at h
+  exact h
+
+def quarticWeight (a t : ℝ) : ℝ := 1 + (t/a)^4
+
+theorem quarticWeight_pos (a t : ℝ) : 0 < quarticWeight a t := by
+  unfold quarticWeight
+  positivity
+
+theorem radial_moment_comparison (n : ℕ) (f : ℝ → ℝ) (a : ℝ)
+    (hn : 1 ≤ n) (ha : 0 < a)
+    (hscale : a^4 = 6*momentPoly (n : ℝ)/32)
+    (hf : IntegrableOn (fun t => |f t|) (Ioi (0 : ℝ)))
+    (h2 : IntegrableOn (fun t => f t ^ 2) (Ioi (0 : ℝ)))
+    (h4 : IntegrableOn (fun t => t^4 * f t ^ 2) (Ioi (0 : ℝ)))
+    (hi : IntegrableOn (fun t => (quarticWeight a t)⁻¹) (Ioi (0 : ℝ)))
+    (hm2 : (∫ t in Ioi (0 : ℝ), f t ^ 2) = 1/2)
+    (hm4 : (∫ t in Ioi (0 : ℝ), t^4 * f t ^ 2) = momentPoly (n : ℝ)/32)
+    (hwi : (∫ t in Ioi (0 : ℝ), (quarticWeight a t)⁻¹) =
+      Real.pi*a/(2*Real.sqrt 2)) :
+    (∫ t in Ioi (0 : ℝ), |f t|) <
+      (2 : ℝ)^n * Real.Gamma ((n : ℝ)/2+1)^2 / (n.factorial : ℝ) := by
+  let μ := volume.restrict (Ioi (0 : ℝ))
+  have eqw : (fun t => f t ^ 2 * quarticWeight a t) =
+      (fun t => f t ^ 2 + (a^4)⁻¹ * (t^4 * f t ^ 2)) := by
+    funext t
+    unfold quarticWeight
+    rw [div_pow, div_eq_mul_inv]
+    ring
+  have h2' : Integrable (fun t => f t ^ 2) μ := h2
+  have h4' : Integrable (fun t => (a^4)⁻¹ * (t^4 * f t ^ 2)) μ :=
+    h4.const_mul _
+  have hw : Integrable (fun t => f t ^ 2 * quarticWeight a t) μ := by
+    rw [eqw]
+    exact h2'.add h4'
+  have hB : 0 < ∫ t, (quarticWeight a t)⁻¹ ∂μ := by
+    change 0 < ∫ t in Ioi (0 : ℝ), (quarticWeight a t)⁻¹
+    rw [hwi]
+    positivity
+  have hW : (∫ t, f t ^ 2 * quarticWeight a t ∂μ) =
+      1/2+momentPoly (n : ℝ)/(32*a^4) := by
+    rw [eqw, integral_add h2' h4', integral_const_mul]
+    change (∫ t in Ioi (0 : ℝ), f t ^ 2) +
+      (a^4)⁻¹ * (∫ t in Ioi (0 : ℝ), t^4 * f t ^ 2) = _
+    rw [hm2, hm4]
+    ring
+  have h := weighted_cauchy_sq μ f (quarticWeight a) (quarticWeight_pos a) hf hw hi hB
+  rw [hW] at h
+  change (∫ t in Ioi (0 : ℝ), |f t|)^2 ≤
+    (1/2+momentPoly (n : ℝ)/(32*a^4)) *
+      (∫ t in Ioi (0 : ℝ), (quarticWeight a t)⁻¹) at h
+  rw [hwi] at h
+  exact fock_comparison_factorial n _ hn
+    (optimized_moment_bound (n : ℝ) _ a ha hscale h)
+
+#print axioms weighted_cauchy_sq
+#print axioms radial_moment_comparison
+
+end F19
