@@ -1,5 +1,6 @@
 
 import F19.Algebra
+import Mathlib.Probability.Distributions.Poisson
 
 /-!
 # General-pure-state reduction
@@ -901,5 +902,64 @@ theorem qubit_negative_gamma_bound (k : ℕ) :
 
 #print axioms qubit_negative_polynomial_integral
 #print axioms qubit_negative_gamma_bound
+
+end F19.Pure
+
+
+namespace F19.Pure
+open scoped NNReal
+
+/-- Exact Poisson coefficient recurrence, including the zero-rate case. -/
+theorem poisson_weight_succ (r : ℝ≥0) (k : ℕ) :
+    ((k:ℝ)+1) * ProbabilityTheory.poissonPMFReal r (k+1) =
+      (r:ℝ) * ProbabilityTheory.poissonPMFReal r k := by
+  unfold ProbabilityTheory.poissonPMFReal
+  rw [Nat.factorial_succ, pow_succ]
+  push_cast
+  have hk : (0:ℝ) < (k:ℝ)+1 := by positivity
+  have hf : (0:ℝ) < (k.factorial:ℝ) := by positivity
+  field_simp [hk.ne', hf.ne'] <;> ring
+
+/-- Size-bias shift for arbitrary summable weighted test functions. -/
+theorem poisson_shift (r : ℝ≥0) (g : ℕ → ℝ)
+    (hs : Summable (fun k => ProbabilityTheory.poissonPMFReal r k *
+      (k:ℝ) * g (k-1))) :
+    (∑' k, ProbabilityTheory.poissonPMFReal r k * (k:ℝ) * g (k-1)) =
+      (r:ℝ) * ∑' k, ProbabilityTheory.poissonPMFReal r k * g k := by
+  rw [hs.tsum_eq_zero_add]
+  simp only [Nat.cast_zero, mul_zero, zero_mul, zero_add]
+  have he (k : ℕ) : ProbabilityTheory.poissonPMFReal r (k+1) *
+      ((k+1:ℕ):ℝ) * g (k+1-1) =
+      (r:ℝ) * (ProbabilityTheory.poissonPMFReal r k * g k) := by
+    rw [Nat.add_sub_cancel, Nat.cast_add, Nat.cast_one,
+      mul_comm (ProbabilityTheory.poissonPMFReal r (k+1)), poisson_weight_succ]
+    ring
+  simp_rw [he]
+  rw [tsum_mul_left]
+
+/-- Unit mass of the Poisson weights, supplied by Mathlib. -/
+theorem poisson_mass (r : ℝ≥0) :
+    (∑' k, ProbabilityTheory.poissonPMFReal r k) = 1 :=
+  (ProbabilityTheory.poissonPMFRealSum r).tsum_eq
+
+/-- Passing the finite Poincare inequality to a limit is separate from
+proving binomial-to-Poisson convergence of the three expectations. -/
+theorem poincare_limit (r : ℝ) (p : ℕ → ℝ) (f : ℕ → ℝ)
+    (m s d : ℝ) (hp : ∀ n, 0 ≤ p n) (hp' : ∀ n, p n ≤ 1)
+    (hm : Tendsto (fun n => bernMean (p n) (n+1) f) atTop (𝓝 m))
+    (hs : Tendsto (fun n => bernMean (p n) (n+1) (fun k => (f k)^2)) atTop (𝓝 s))
+    (hd : Tendsto (fun n => bernMean (p n) n (deltaSq f)) atTop (𝓝 d))
+    (hr : Tendsto (fun n : ℕ => ((n:ℝ)+1)*p n*(1-p n)) atTop (𝓝 r)) :
+    s-m^2 ≤ r*d := by
+  have hl : Tendsto (fun n => bernVar (p n) (n+1) f) atTop (𝓝 (s-m^2)) :=
+    hs.sub (hm.pow 2)
+  have hh : Tendsto (fun n : ℕ => ((n:ℝ)+1)*p n*(1-p n)*bernMean (p n) n (deltaSq f))
+      atTop (𝓝 (r*d)) := hr.mul hd
+  exact le_of_tendsto_of_tendsto' hl hh (fun n => bernVar_poincare (p n) (hp n) (hp' n) n f)
+
+#print axioms poisson_weight_succ
+#print axioms poisson_shift
+#print axioms poisson_mass
+#print axioms poincare_limit
 
 end F19.Pure
