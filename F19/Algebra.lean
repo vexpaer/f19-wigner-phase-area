@@ -959,11 +959,11 @@ theorem radialFock_strict (n : ℕ) (hn : 1 ≤ n) :
       _ = ((Real.sqrt (Real.sqrt c))^2)^2 := by ring
       _ = c := by rw [Real.sq_sqrt (Real.sqrt_nonneg c), Real.sq_sqrt hc.le]
   have h2 : IntegrableOn (fun t => radialFock n t^2) (Ioi (0 : ℝ)) := by
-    apply IntegrableOn.of_integral_ne_zero
+    apply Integrable.of_integral_ne_zero
     rw [radialFock_norm]
     norm_num
   have h4 : IntegrableOn (fun t => t^4*radialFock n t^2) (Ioi (0 : ℝ)) := by
-    apply IntegrableOn.of_integral_ne_zero
+    apply Integrable.of_integral_ne_zero
     rw [radialFock_fourth]
     exact (div_pos (momentPoly_pos_nat n) (by norm_num)).ne'
   have hf : IntegrableOn (fun t => |radialFock n t|) (Ioi (0 : ℝ)) := by
@@ -1015,7 +1015,7 @@ noncomputable def radialHusimi (n : ℕ) (t : ℝ) : ℝ :=
 theorem rpow_half_nat_sq (x : ℝ) (hx : 0 ≤ x) (n : ℕ) :
     (x^((n : ℝ)/2))^2 = x^n := by
   rw [← Real.rpow_natCast (x^((n : ℝ)/2)) 2,
-    ← Real.rpow_mul hx, show (n : ℝ)/2*(↑(2 : ℕ) : ℝ) = (n : ℝ) by norm_num,
+    ← Real.rpow_mul hx, show (n : ℝ)/2*(↑(2 : ℕ) : ℝ) = (n : ℝ) by norm_num <;> ring,
     Real.rpow_natCast]
 
 theorem radialHusimi_density_formula (n : ℕ) (t : ℝ) (ht : 0 ≤ t) :
