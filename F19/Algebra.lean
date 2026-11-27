@@ -390,7 +390,7 @@ theorem weighted_cauchy_sq {α : Type*} [MeasurableSpace α] (μ : Measure α)
   rw [eFG, eF, eG] at h
   exact h
 
-def quarticWeight (a t : ℝ) : ℝ := 1 + (t/a)^4
+noncomputable def quarticWeight (a t : ℝ) : ℝ := 1 + (t/a)^4
 
 theorem quarticWeight_pos (a t : ℝ) : 0 < quarticWeight a t := by
   unfold quarticWeight
