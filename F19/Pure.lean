@@ -229,3 +229,76 @@ theorem finite_vacuum_cross_identity (N : ℕ) (c : ℕ → ℂ) :
 #print axioms finite_vacuum_cross_identity
 
 end F19.Pure
+
+
+namespace F19.Pure
+
+/-- Polynomial part of a cross-Fock Wigner function, in the conjugate
+quadrature convention z = x - i p. The Gaussian and π are factored out. -/
+noncomputable def crossFockKernel (m n : ℕ) (z : ℂ) : ℂ :=
+  ∑ k ∈ Finset.range (min m n+1),
+    (((-1 : ℝ)^k * (m.choose k : ℝ) * (n.choose k : ℝ) *
+      (k.factorial : ℝ) /
+      (Real.sqrt (m.factorial : ℝ) * Real.sqrt (n.factorial : ℝ))) : ℂ) *
+    z^(m-k) * (star z)^(n-k)
+
+theorem crossFockKernel_vacuum (m : ℕ) (z : ℂ) :
+    crossFockKernel m 0 z = z^m / (Real.sqrt (m.factorial : ℝ) : ℂ) := by
+  unfold crossFockKernel
+  simp [Finset.sum_range_succ, div_eq_mul_inv, mul_comm]
+
+theorem crossFockKernel_conj (m n : ℕ) (z : ℂ) :
+    star (crossFockKernel m n z) = crossFockKernel n m z := by
+  unfold crossFockKernel
+  rw [min_comm m n]
+  simp only [map_sum, map_mul, map_pow, Complex.conj_ofReal, star_star]
+  apply Finset.sum_congr rfl
+  intro k hk
+  have he : ((-1 : ℝ)^k * (m.choose k : ℝ) * (n.choose k : ℝ) *
+      (k.factorial : ℝ) /
+      (Real.sqrt (m.factorial : ℝ) * Real.sqrt (n.factorial : ℝ))) =
+      ((-1 : ℝ)^k * (n.choose k : ℝ) * (m.choose k : ℝ) *
+      (k.factorial : ℝ) /
+      (Real.sqrt (n.factorial : ℝ) * Real.sqrt (m.factorial : ℝ))) := by
+    rw [show ((-1 : ℝ)^k * (m.choose k : ℝ) * (n.choose k : ℝ) *
+      (k.factorial : ℝ)) = ((-1 : ℝ)^k * (n.choose k : ℝ) * (m.choose k : ℝ) *
+      (k.factorial : ℝ)) by ring, mul_comm (Real.sqrt (m.factorial : ℝ))]
+  rw [he]
+  ring
+
+noncomputable def finiteWignerPolynomial (N : ℕ) (c : ℕ → ℂ) (z : ℂ) : ℂ :=
+  ∑ m ∈ Finset.range (N+1), ∑ n ∈ Finset.range (N+1),
+    c m * star (c n) * crossFockKernel m n z
+
+theorem finiteWignerPolynomial_real (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
+    star (finiteWignerPolynomial N c z) = finiteWignerPolynomial N c z := by
+  unfold finiteWignerPolynomial
+  simp only [map_sum, map_mul, star_star, crossFockKernel_conj]
+  rw [Finset.sum_comm]
+  apply Finset.sum_congr rfl
+  intro m hm
+  apply Finset.sum_congr rfl
+  intro n hn
+  ring
+
+noncomputable def finiteCrossVacuum (N : ℕ) (c : ℕ → ℂ) (z : ℂ) : ℂ :=
+  ((Real.exp (-‖z‖^2)/Real.pi : ℝ) : ℂ) *
+    ∑ m ∈ Finset.range (N+1), c m * crossFockKernel m 0 (Real.sqrt 2 • z)
+
+theorem finiteCrossVacuum_eq (N : ℕ) (c : ℕ → ℂ) (z : ℂ) :
+    finiteCrossVacuum N c z = vacuumCrossWigner (bargmannPolynomial N c) z := by
+  unfold finiteCrossVacuum vacuumCrossWigner bargmannPolynomial
+  simp_rw [crossFockKernel_vacuum, mul_div_assoc]
+
+theorem finiteCrossVacuum_norm (N : ℕ) (c : ℕ → ℂ) :
+    (∫ z : ℂ, ‖finiteCrossVacuum N c z‖) =
+      (∫ z : ℂ, husimiAmplitude (bargmannPolynomial N c) z)/(2*Real.pi) := by
+  simp_rw [finiteCrossVacuum_eq]
+  exact finite_vacuum_cross_identity N c
+
+#print axioms crossFockKernel_vacuum
+#print axioms crossFockKernel_conj
+#print axioms finiteWignerPolynomial_real
+#print axioms finiteCrossVacuum_norm
+
+end F19.Pure
